@@ -1,0 +1,145 @@
+---
+title: "LinRace_compare"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{LinRace_compare}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+```{r setup}
+library(devtools)
+devtools::load_all()
+library(ggplot2)
+devtools::load_all("~/TedSim/TedSim_1.00/TedSim/")
+```
+
+```{r}
+rf1 <- read.csv(file = 'plots/out_1125/out_1125/rf.txt')
+rf2 <- read.csv(file = 'plots/out_1125/out_1125_alt/rf.txt')
+```
+
+```{r}
+rf1$mode <- 'c_likelihood'
+rf2$mode <- 'b_likelihood'
+
+rf <- rbind(rf1,rf2)
+rf$mu_group <- as.factor(rf$mu)
+rf$ncells_group <- as.factor(rf$ncells)
+
+# Basic box plot
+p <- ggplot(rf[rf$ncells == 32,], aes(x=mu_group, y=rf, fill=mode)) + 
+    geom_boxplot()
+p
+
+p <- ggplot(rf[rf$mu == 0.01,], aes(x=ncells_group, y=rf, fill=mode)) + 
+    geom_boxplot()
+p
+```
+
+```{r}
+rf_lintimat <- data.frame(ncells = numeric(),mu = numeric(),run = numeric(),rf = numeric())
+for (mu in c(0.01,0.1)){
+  for (ncells in c(32, 64, 128,512,1024)){
+    for (i in 1:5){
+      tree_recon_dir <- sprintf("~/LinTIMaT/LinRace_compare/results_LinTIMaT/%g_mu_%g_run_%g_bin_tree.newick", 
+                        ncells, mu, i)
+      tree_gt_dir <- sprintf("~/LinTIMaT/LinRace_compare/sim/tree_%g_mu_%g_run_%g.tree", 
+                        ncells, mu, i)
+      tree_lintimat <- read.tree(file = tree_recon_dir)
+      tree_lintimat <- drop.tip(tree_lintimat,'normal')
+      tree_gt <- read.tree(file = tree_gt_dir)
+      tip_label <- c()
+      for (node in tree_gt$tip.label){
+        tip <- paste('cell_',substr(node,2,nchar(node)),sep = '')
+        tip_label <- c(tip_label,tip)
+      }
+      tree_gt$tip.label <- tip_label
+      
+      print( RF.dist(tree_lintimat, tree_gt, normalize = TRUE))
+      temp <- data.frame(ncells = ncells,mu = mu,run = i,rf = RF.dist(tree_lintimat, tree_gt, normalize = TRUE))
+      rf_lintimat <- rbind(rf_lintimat,temp)
+    }
+  }
+}
+write.csv(rf_lintimat,"rf_lintimat.txt",row.names = FALSE)
+```
+
+```{r}
+ncells_list <- c(32,64,128)
+mu_list <- c(0.1,0.01)
+rf_linrace <- data.frame(ncells = numeric(),mu = numeric(),run = numeric(),rf = numeric())
+
+for (ncells in ncells_list){
+  for (mu in mu_list){
+    for (i in 1:5){
+      rf_dist <- c()
+      for (j in 0:4){
+        res_dir <- sprintf("~/AncesCell/res/res_%g_mu_%g_run_%g.%g.rds", 
+                                          ncells, mu,i,  j)
+        res <- readRDS(res_dir)
+        rf_dist <- c(rf_dist,RF.dist(res[[1]][[1]], res[[3]], normalize = TRUE))
+      }
+      temp <- data.frame(ncells = ncells,mu = mu,run = i,rf = min(rf_dist))
+      rf_linrace <- rbind(rf_linrace,temp)
+    }
+    
+  }
+}
+```
+
+```{r}
+rf_lintimat <- read.csv(file = 'rf_lintimat.txt')
+rf_linrace <- read.csv(file = 'rf.txt')
+```
+
+```{r}
+rf_lintimat$mode <- 'LinTIMaT'
+rf_linrace$mode <- 'LinRace_Pareto'
+
+rf <- rbind(rf_lintimat,rf_linrace)
+rf$mu_group <- as.factor(rf$mu)
+rf$ncells_group <- as.factor(rf$ncells)
+
+# Basic box plot
+p <- ggplot(rf[rf$ncells == 32,], aes(x=mu_group, y=rf, fill=mode)) + 
+    geom_boxplot()
+p
+
+p <- ggplot(rf[rf$mu == 0.1,], aes(x=ncells_group, y=rf, fill=mode)) + 
+    geom_boxplot()
+p
+```
+```{r}
+rf_lintimat <- read.csv(file = 'rf_lintimat.txt')
+rf_linrace <- read.csv(file = '~/AncesCell/res.csv')
+
+rf_linrace$mode <- "LinRace"
+rf_lintimat$mode <- "LinTIMaT"
+rf_linrace$mode[(rf_linrace$pq == 1)&(rf_linrace$lambda == 1)] <- "P=Q=1,lambda=1"
+rf_linrace$mode[(rf_linrace$pq == 5)&(rf_linrace$lambda == 1)] <- "P=Q=5,lambda=1"
+rf_linrace$mode[(rf_linrace$pq == 1)&(rf_linrace$lambda == 0.05)] <- "P=Q=1,lambda=0.05"
+rf_linrace$mode[(rf_linrace$pq == 5)&(rf_linrace$lambda == 0.05)] <- "P=Q=5,lambda=0.05"
+
+rf <- rbind(rf_linrace[,-c(4,5)],rf_lintimat)
+
+
+rf$mu_group <- as.factor(rf$mu)
+rf$ncells_group <- as.factor(rf$ncells)
+
+# Basic box plot
+p <- ggplot(rf[rf$ncells == 32,], aes(x=mu_group, y=rf, fill=mode)) + 
+    geom_boxplot()
+p
+
+p <- ggplot(rf[rf$mu == 0.1,], aes(x=ncells_group, y=rf, fill=mode)) + 
+    geom_boxplot()
+p
+```

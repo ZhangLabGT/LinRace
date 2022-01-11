@@ -1,0 +1,26 @@
+Package: LinRace
+Type: Package
+Title: What the Package Does (Title Case)
+Version: 0.1.0
+Author: Who wrote it
+Maintainer: The package maintainer <yourself@somewhere.net>
+Description: More about what it does (maybe more than one line)
+    Use four spaces when indenting paragraphs within the Description.
+License: What license is it under?
+Encoding: UTF-8
+LazyData: true
+Suggests: 
+    knitr,
+    rmarkdown
+VignetteBuilder: knitr
+RoxygenNote: 7.1.1
+Imports:
+  dplyr,
+  DCLEAR,
+  phangorn,
+  ape,
+  dyno,
+  slingshot,
+  TreeTools
+Depends:
+  R(>= 3.5.0)

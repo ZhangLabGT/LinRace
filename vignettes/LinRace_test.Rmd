@@ -1,0 +1,1011 @@
+---
+title: "LinRace_test"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{LinRace_test}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+```{r setup}
+library(devtools)
+devtools::load_all("~/TedSim/TedSim_1.00/TedSim/")
+devtools::load_all()
+```
+
+```{r}
+# Simulate dataset using TedSim
+
+#testing LinRace on simulated datasets
+# ncells: 32, 128, 512
+# mutation rate mu: 0.05, 0.1, 0.2,0.4
+# 5 datasets each settings
+
+ncells <- 128
+#state tree 1
+#phyla <- read.tree(text='((t1:4, (t2:2, t3:2):2):2);')
+#state tree 2
+phyla <- read.tree(text='((t1:4, t2:4, t3:4, t4:4, t5:4, t6:4):2);')
+#phyla <- read.tree(text='((t1:2, t2:2):1, (t3:2, t4:2):1):2;')
+N_nodes <- 2*ncells-2
+ngenes <- 500
+max_walk <- 8
+p_a <- 0.8
+n_cif <- 30
+n_diff <- 20
+cif_step <- 0.2
+#cif_step <- 0.2
+mu <- 0.1
+#mu <- 0.01
+
+p_d <- 0
+N_char <- 16
+#N_char <- 16
+#set.seed(1)
+
+
+returnlist <- SIFGenerate(phyla,n_diff,step = cif_step)
+cifs <- SimulateCIFs(ncells,phyla,p_a = p_a,n_CIF = n_cif,n_diff = n_diff,step = cif_step,p_d = p_d, Sigma = 0.5,mu = mu, N_char = N_char, max_walk = max_walk, SIF_res = returnlist, unif_on = FALSE)
+
+#We only need the leaf cells for experiments
+cif_leaves <- lapply(c(1:3),function(parami){
+  cif_leaves_all <- cifs[[1]][[parami]][c(1:ncells),]
+  return(cif_leaves_all)
+})
+cif_res <- list(cif_leaves,cifs[[2]])
+states <- cifs[[2]]
+states <- states[1:N_nodes,]
+states_leaves <- states[1:ncells,]
+muts <- cifs[[7]]
+rownames(muts) <- paste("cell",states[,4],sep = "_")
+muts_leaves <- muts[1:ncells,]
+
+tree_ct <- cifs[[4]]
+tip_label <- c()
+for (node in tree_ct$tip.label){
+  tip <- paste('cell_',substr(node,2,nchar(node)),sep = '')
+  tip_label <- c(tip_label,tip)
+}
+tree_ct$tip.label <- tip_label
+
+#simulate true counts
+true_counts_res <- CIF2Truecounts(ngenes = 500,ncif = n_cif,ge_prob = 0.3,ncells = ncells, cif_res = cif_res)
+
+gene_expression_dir <- ""
+cell_meta_dir <- ""
+tree_gt_dir <- ""
+write.csv(true_counts_res[[1]],gene_expression_dir,row.names = FALSE)
+write.csv(states_leaves,cell_meta_dir)
+write.tree(tree_ct,tree_gt_dir)
+```
+
+```{r}
+#Get cell state information (intermediate)
+state_counter <- 1
+states_intermediate <- states_leaves[,'cluster']
+for (cluster_id in sort(unique(states_leaves[,'cluster']))){
+  depth_range <- sort(unique(states_leaves[states_leaves[,'cluster']==cluster_id,'depth']))
+  state_inter <- state_counter:(state_counter + length(depth_range)-1)
+  state_counter <- state_counter + length(depth_range)
+  print(cluster_id)
+  print(state_inter)
+  for (i in 1:length(depth_range)){
+    states_intermediate[states_leaves[,'cluster']==cluster_id & states_leaves[,'depth'] == depth_range[i]]<- state_inter[i]
+  }
+}
+```
+
+
+```{r}
+# Run neighbor joining on barcode data
+mu_d1 = c( 30, 20, 10, 5, 5, 1, 0.01, 0.001)
+mu_d1 = mu_d1/sum(mu_d1)
+simn = 100 # number of cell samples
+m = 200  ## number of targets
+mu_d = 0.03 # mutation rate
+d = 12 # number of cell division
+p_d = 0.005 # dropout probability
+
+sim_tree <- list()
+for (i in 1:dim(muts_leaves)[1]){
+  sim_tree[[i]] <- c(muts_leaves[i,])
+  #names(sim_tree[[i]]) <- rownames(muts_leaves)[i]
+}
+
+names(sim_tree) <- rownames(muts_leaves)
+#nmstrings <- c('0','-',c(1:100))
+nmstrings <- unique(unlist(sim_tree))
+sim_data <- phyDat(sim_tree,type = 'USER',levels = nmstrings)
+
+#dist_wh2 <- WH(sim_data, InfoW, dropout=TRUE)
+dist_h <- dist.hamming(sim_data)
+
+Treenj = nj(dist_h)
+TreeNJ_h <- multi2di(Treenj)
+#TreeFM_wh2 = fastme.ols(dist_wh2)
+TreeNJ_h$edge.length <- rep(1, length(TreeNJ_h$edge.length))
+print( RF.dist(TreeNJ_h, tree_ct, normalize = TRUE) )
+```
+```{r}
+library(destiny)
+#Pairwise gene expression distance
+dist_ge  <- matrix(rep(0,ncells^2), ncells, ncells)
+for (i in 1:ncells){
+  for (j in 1:ncells){
+    flag <- 0
+    state_1 <- states_intermediate[i]
+    state_2 <- states_intermediate[j]
+    for (lineage in state_lineages){
+      if((state_1 %in% lineage) && (state_2 %in% lineage)){
+        state_dist <- abs(match(state_1,lineage)-match(state_2,lineage))
+        flag <- 1
+      }
+    }
+    if (flag == 0){
+      state_dist <- states_leaves[i,3] + states_leaves[j,3] - 8
+    }
+    dist_ge[i,j] <- state_dist
+    dist_ge[j,i] <- state_dist
+  }
+}
+rownames(dist_ge) <- tree_ct$tip.label
+dist.ge <- as.dist(dist_ge)
+Treenj_ge <-nj(dist.ge)
+TreeNJ_ge <- multi2di(Treenj_ge)
+#TreeFM_wh2 = fastme.ols(dist_wh2)
+TreeNJ_ge$edge.length <- rep(1, length(TreeNJ_ge$edge.length))
+print( RF.dist(TreeNJ_ge, tree_ct, normalize = TRUE) )
+
+
+
+counts_log_t <- t(log2(true_counts_res[[1]]+1))
+rownames(counts_log_t) <- tree_ct$tip.label
+
+#dm_ge <- DiffusionMap(counts_log_t)
+#dist_d <- eigenvectors(dm_ge)%*%diag(eigenvalues(dm_ge))%*%t(eigenvectors(dm_ge))
+
+dist.euc <- dist(counts_log_t)
+Treenj_ge <-nj(dist.euc)
+TreeNJ_ge <- multi2di(Treenj_ge)
+#TreeFM_wh2 = fastme.ols(dist_wh2)
+TreeNJ_ge$edge.length <- rep(1, length(TreeNJ_ge$edge.length))
+print( RF.dist(TreeNJ_ge, tree_ct, normalize = TRUE) )
+
+
+for (coef in c(0.001,0.01,0.02,0.05,0.1)){
+  dist.c <- dist_h + coef * dist.euc
+  Treenj = nj(dist.c)
+  TreeNJ_h <- multi2di(Treenj)
+  TreeNJ_h$edge.length <- rep(1, length(TreeNJ_h$edge.length))
+  print( RF.dist(TreeNJ_h, tree_ct, normalize = TRUE) )
+}
+
+```
+
+
+
+```{r}
+# Initialization
+#state_lineages for state tree 1
+state_lineages <- list()
+for (i in 1:3){
+  if (i ==1){
+    lineage <- c(sort(unique(states_intermediate[states_leaves[,'cluster']==5])),sort(unique(states_intermediate[states_leaves[,'cluster']==i])))
+    state_lineages[[length(state_lineages)+1]] <- lineage
+  }else{
+    lineage <- c(sort(unique(states_intermediate[states_leaves[,'cluster']==5])),sort(unique(states_intermediate[states_leaves[,'cluster']==6])),sort(unique(states_intermediate[states_leaves[,'cluster']==i])))
+    state_lineages[[length(state_lineages)+1]] <- lineage
+  }
+}
+#state lineages for state tree 2
+state_lineages <- list()
+for (i in 1:6){
+    lineage <- c(sort(unique(states_intermediate[states_leaves[,'cluster']==8])),sort(unique(states_intermediate[states_leaves[,'cluster']==i])))
+    state_lineages[[length(state_lineages)+1]] <- lineage
+}
+
+#construct the state lineages for the new tree:::
+cell_meta <- as.data.frame(states_leaves)
+cell_meta$cluster_kmeans <- states_intermediate
+muts_leaves <- MutsTransform(muts_leaves)
+
+#lambda <- 1
+```
+
+```{r}
+#local search program 1: local search using rSS
+tree <- TreeNJ_h
+tree$edge.length <- rep(1, length(tree$edge.length))
+edges <- tree$edge
+#maxcl <- LikelihoodCal(tree,muts_leaves,cell_meta$cluster_kmeans,state_lineages)
+cl_list <- LikelihoodCal(tree,muts_leaves,cell_meta$cluster_kmeans,state_lineages,lambda = lambda)
+maxcl <- cl_list$cl
+maxlex <- cl_list$l_expression
+maxlbar <- cl_list$l_barcode
+ances_res <- AncesInfer(tree,muts_leaves,cell_meta$cluster_kmeans,state_lineages)
+muts <- ances_res[[1]]
+cell_state_labels <- ances_res[[2]]
+transfer_prob <- MutationCal(edges,muts)
+state_shift_prob <- ShiftprobCal(edges,cell_state_labels,state_lineages) 
+likelihood_curve <-c()
+maxIter <- 20000
+seeds <- runif(10000,1,99999)
+best_tree <- tree
+best_tree_list <- list()
+tree_list <- list()
+maxcl_list <- c()
+state_shift_dist <-c()
+ptm <- proc.time()
+LikelihoodCal_time <- 0
+TreeLC_time <- 0
+for (i in 1:maxIter){
+  c_time <- proc.time()
+  LC_prob <- Cal_LC_prob(tree$edge,cell_state_labels,state_shift_prob,state_lineages)
+  tree_new <- TreeLC2(tree,prob_internal = LC_prob)
+  #tree_new <-  rNNI(tree,1,1)
+  TreeLC_time <- TreeLC_time + proc.time()-c_time
+  #cl <- LikelihoodCal(tree_new,muts_leaves,cell_meta$cluster_kmeans,state_lineages)
+  c_time <- proc.time()
+  cl_list <- LikelihoodCal(tree_new,muts_leaves,cell_meta$cluster_kmeans,state_lineages,transfer_prob = transfer_prob, state_shift_prob = state_shift_prob,lambda = lambda)
+  #cl_list <- LikelihoodCal2(tree_new,muts_leaves,cell_meta$cluster_kmeans,state_lineages)
+  ances_res <- AncesInfer(tree_new,muts_leaves,cell_meta$cluster_kmeans,state_lineages)
+  muts <- ances_res[[1]]
+  cell_state_labels <- ances_res[[2]]
+  #temp <- transfer_prob$prob
+  #transfer_prob <- MutationCal(edges,muts)
+  #state_shift_dist <- c(state_shift_dist,norm(transfer_prob$prob-temp,'2'))
+  #temp <- state_shift_prob
+  #edges_new <- tree_new$edge
+  #state_shift_prob <- ShiftprobCal2(edges_new,cell_state_labels,state_lineages)
+  #state_shift_dist <- c(state_shift_dist,norm(state_shift_prob-temp,'f'))
+  cl <- cl_list$cl
+  l_barcode <- cl_list[[2]]
+  l_expression <- cl_list[[3]]
+  LikelihoodCal_time <- LikelihoodCal_time + proc.time()-c_time
+  likelihood_curve <- c(likelihood_curve,maxcl)
+  if (cl > maxcl){
+    #maxex <- l_expression
+    maxlbar <- l_barcode
+    maxcl <- cl
+    tree <- tree_new
+    best_tree <- tree
+    tree_list[[length(tree_list)+1]] <- tree
+    
+    edges <- tree$edge
+    ances_res <- AncesInfer(tree,muts_leaves,cell_meta$cluster_kmeans,state_lineages)
+    muts <- ances_res[[1]]
+    #cell_state_labels <- ances_res[[2]]
+    #temp <- transfer_prob$prob
+    #transfer_prob <- MutationCal(edges,muts)
+    #state_shift_dist <- c(state_shift_dist,norm(transfer_prob$prob-temp,'2'))
+    
+    #state_shift_prob <- ShiftprobCal2(edges,cell_state_labels,state_lineages)
+  }
+  if (i%%500 == 0){
+    if (length(unique(likelihood_curve[(i-500):i])) == 1){
+      
+      best_tree_list[[length(best_tree_list)+1]] <- best_tree
+      maxcl_list <- c(maxcl_list,maxcl)
+      
+      set.seed(seeds[i/10])
+      #tree <- rtree(length(tree_ct$tip.label), rooted = TRUE, tip.label = tree_ct$tip.label)
+      tree <- TreeNJ_h
+      edges <- tree$edge
+      tree$edge.length <- rep(1, length(tree$edge.length))
+      #maxcl <- LikelihoodCal(tree,muts_leaves,cell_meta$cluster_kmeans,state_lineages)
+      cl_list <- LikelihoodCal(tree,muts_leaves,cell_meta$cluster_kmeans,state_lineages)
+      maxcl <- cl_list$cl
+      maxlex <- cl_list$l_expression
+      maxlbar <- cl_list$l_barcode
+      ances_res <- AncesInfer(tree,muts_leaves,cell_meta$cluster_kmeans,state_lineages)
+      muts <- ances_res[[1]]
+      #cell_state_labels <- ances_res[[2]]
+      transfer_prob <- MutationCal(edges,muts)
+      state_shift_prob <- ShiftprobCal(edges,cell_state_labels,state_lineages)
+    }
+  }
+  if (i %% 100 == 0){
+    likelihood_check <- sprintf("After %g iterations, the best likelihood is %g.", 
+                                i, maxcl)
+    print(likelihood_check)
+  }
+}
+total_time <- proc.time() - ptm
+total_time
+```
+
+```{r}
+data_df <- data.frame(cl = numeric(),l_barcode = numeric(),l_expression = numeric(),rf = numeric())
+lambda <- 1
+for (btree_local in best_tree_list){
+  cl_list <- LikelihoodCal(btree_local,muts_leaves,cell_meta$cluster_kmeans,state_lineages,lambda = lambda)
+  temp_df <- data.frame(cl = cl_list$cl,l_barcode = cl_list$l_barcode,l_expression = cl_list$l_expression,rf = RF.dist(btree_local, tree_ct, normalize = TRUE))
+  data_df <- rbind(data_df,temp_df)
+}
+
+p <- ggplot(data = data_df)
+p <- p + geom_point(aes(x = rf,y = cl))
+p
+
+p <- ggplot(data = data_df)
+p <- p + geom_point(aes(x = rf,y = l_barcode))
+p
+
+p <- ggplot(data = data_df)
+p <- p + geom_point(aes(x = rf,y = l_expression))
+p
+```
+
+```{r}
+# Initialization
+#state_lineages for state tree 1
+state_lineages <- list()
+for (i in 1:3){
+  if (i ==1){
+    lineage <- c(sort(unique(states_intermediate[states_leaves[,'cluster']==5])),sort(unique(states_intermediate[states_leaves[,'cluster']==i])))
+    state_lineages[[length(state_lineages)+1]] <- lineage
+  }else{
+    lineage <- c(sort(unique(states_intermediate[states_leaves[,'cluster']==5])),sort(unique(states_intermediate[states_leaves[,'cluster']==6])),sort(unique(states_intermediate[states_leaves[,'cluster']==i])))
+    state_lineages[[length(state_lineages)+1]] <- lineage
+  }
+}
+#state lineages for state tree 2
+state_lineages <- list()
+for (i in 1:6){
+    lineage <- c(sort(unique(states_intermediate[states_leaves[,'cluster']==8])),sort(unique(states_intermediate[states_leaves[,'cluster']==i])))
+    state_lineages[[length(state_lineages)+1]] <- lineage
+}
+cell_meta <- as.data.frame(states_leaves)
+cell_meta$cluster_kmeans <- states_intermediate
+muts_leaves <- MutsTransform(muts_leaves)
+
+lambda <- 1
+```
+
+```{r}
+#local search program 2: exhaustive local search using rSS (steepest ascent)
+#set.seed(2021)
+tree <- tree_init
+tree$edge.length <- rep(1, length(tree$edge.length))
+edges <- tree$edge
+#maxcl <- LikelihoodCal(tree,muts_leaves,cell_meta$cluster_kmeans,state_lineages)
+cl_list <- LikelihoodCal(tree,muts_leaves,cell_meta$cluster_kmeans,state_lineages,lambda = lambda)
+maxcl <- cl_list$cl
+maxlex <- cl_list$l_expression
+maxlbar <- cl_list$l_barcode
+ances_res <- AncesInfer(tree,muts_leaves,cell_meta$cluster_kmeans,state_lineages)
+muts <- ances_res[[1]]
+cell_state_labels <- ances_res[[2]]
+transfer_prob <- MutationCal(edges,muts)
+state_shift_prob <- ShiftprobCal2(edges,cell_state_labels,state_lineages) 
+likelihood_curve <-c()
+maxIter <- 100000
+seeds <- runif(10000,1,99999)
+best_tree <- tree
+best_tree_list <- list()
+tree_list <- list()
+maxcl_list <- c()
+state_shift_dist <-c()
+ptm <- proc.time()
+LikelihoodCal_time <- 0
+TreeLC_time <- 0
+flag <- 0
+for (i in 1:maxIter){
+  c_time <- proc.time()
+  flag <- 0
+  #LC_prob <- Cal_LC_prob(tree$edge,cell_state_labels,state_shift_prob,state_lineages)
+  tree_new_list <- TreeLC3(tree)
+  
+  TreeLC_time <- TreeLC_time + proc.time()-c_time
+  #cl <- LikelihoodCal(tree_new,muts_leaves,cell_meta$cluster_kmeans,state_lineages)
+  c_time <- proc.time()
+  for (j in 1:length(tree_new_list)){
+    tree_new <- tree_new_list[[j]]
+    cl_list <- LikelihoodCal(tree_new,muts_leaves,cell_meta$cluster_kmeans,state_lineages)
+    cl <- cl_list$cl
+  }
+  if (cl > maxcl){
+    flag <- 1
+
+    maxcl <- cl
+    imax <- j
+    #cell_state_labels <- ances_res[[2]]
+    #temp <- transfer_prob$prob
+    #transfer_prob <- MutationCal(edges,muts)
+    #state_shift_dist <- c(state_shift_dist,norm(transfer_prob$prob-temp,'2'))
+    
+    #state_shift_prob <- ShiftprobCal2(edges,cell_state_labels,state_lineages)
+  }
+  best_tree <- tree_new_list[[imax]]
+  tree <- best_tree
+  tree_list[[length(tree_list)+1]] <- best_tree
+  LikelihoodCal_time <- LikelihoodCal_time + proc.time()-c_time
+  likelihood_curve <- c(likelihood_curve,maxcl)  
+  likelihood_check <- sprintf("After %g iterations, the best likelihood is %g.", 
+                                i, maxcl)
+  print(likelihood_check)
+}
+total_time <- proc.time() - ptm
+total_time
+```
+
+
+```{r}
+# plot correlation between rf distance and likelihood scores
+data_df <- data.frame(cl = numeric(),l_barcode = numeric(),l_expression = numeric(),rf = numeric())
+for (tree in tree_list){
+  cl_list <- LikelihoodCal(tree,muts_leaves,cell_meta$cluster_kmeans,state_lineages)
+  temp_df <- data.frame(cl = cl_list$cl,l_barcode = cl_list$l_barcode,l_expression = cl_list$l_expression,rf = RF.dist(tree, tree_ct, normalize = TRUE))
+  data_df <- rbind(data_df,temp_df)
+}
+
+p <- ggplot(data = data_df)
+p <- p + geom_point(aes(x = rf,y = cl))
+p
+
+p <- ggplot(data = data_df)
+p <- p + geom_point(aes(x = rf,y = l_barcode))
+p
+
+p <- ggplot(data = data_df)
+p <- p + geom_point(aes(x = rf,y = l_expression))
+p
+```
+
+```{r}
+#local search program 3: local search using rSS + NNI
+lambda <- 0.05
+
+#tree <- TreeNJ_h
+tree <- rtree(length(tree_ct$tip.label), rooted = TRUE, tip.label = tree_ct$tip.label)
+tree$edge.length <- rep(1, length(tree$edge.length))
+edges <- tree$edge
+#maxcl <- LikelihoodCal(tree,muts_leaves,cell_meta$cluster_kmeans,state_lineages)
+cl_list <- LikelihoodCal(tree,muts_leaves,cell_meta$cluster_kmeans,state_lineages,lambda = lambda)
+maxcl <- cl_list$cl
+maxlex <- cl_list$l_expression
+maxlbar <- cl_list$l_barcode
+ances_res <- AncesInfer(tree,muts_leaves,cell_meta$cluster_kmeans,state_lineages)
+muts <- ances_res[[1]]
+cell_state_labels <- ances_res[[2]]
+transfer_prob <- MutationCal(edges,muts)
+state_shift_prob <- ShiftprobCal(edges,cell_state_labels,state_lineages) 
+likelihood_curve <-c()
+maxIter <- 20000
+seeds <- runif(10000,1,99999)
+best_tree <- tree
+best_tree_list <- list()
+tree_list <- list()
+maxcl_list <- c()
+state_shift_dist <-c()
+ptm <- proc.time()
+LikelihoodCal_time <- 0
+TreeLC_time <- 0
+for (i in 1:maxIter){
+  c_time <- proc.time()
+  #LC_prob <- Cal_LC_prob(tree$edge,cell_state_labels,state_shift_prob,state_lineages)
+  #tree_new <- TreeLC2(tree,prob_internal = LC_prob)
+  tree_new <- TreeLC2(tree)
+  #tree_new <-  rNNI(tree,1,1)
+  TreeLC_time <- TreeLC_time + proc.time()-c_time
+  #cl <- LikelihoodCal(tree_new,muts_leaves,cell_meta$cluster_kmeans,state_lineages)
+  c_time <- proc.time()
+  #cl_list <- LikelihoodCal(tree_new,muts_leaves,cell_meta$cluster_kmeans,state_lineages,transfer_prob = transfer_prob, state_shift_prob = state_shift_prob,lambda = lambda)
+  cl_list <- LikelihoodCal(tree_new,muts_leaves,cell_meta$cluster_kmeans,state_lineages)
+  ances_res <- AncesInfer(tree_new,muts_leaves,cell_meta$cluster_kmeans,state_lineages)
+  muts <- ances_res[[1]]
+  cell_state_labels <- ances_res[[2]]
+  #temp <- transfer_prob$prob
+  #transfer_prob <- MutationCal(edges,muts)
+  #state_shift_dist <- c(state_shift_dist,norm(transfer_prob$prob-temp,'2'))
+  #temp <- state_shift_prob
+  #edges_new <- tree_new$edge
+  #state_shift_prob <- ShiftprobCal2(edges_new,cell_state_labels,state_lineages)
+  #state_shift_dist <- c(state_shift_dist,norm(state_shift_prob-temp,'f'))
+  cl <- cl_list$cl
+  l_barcode <- cl_list[[2]]
+  l_expression <- cl_list[[3]]
+  LikelihoodCal_time <- LikelihoodCal_time + proc.time()-c_time
+  likelihood_curve <- c(likelihood_curve,maxcl)
+  if (cl > maxcl){
+    #maxex <- l_expression
+    maxlbar <- l_barcode
+    maxcl <- cl
+    tree <- tree_new
+    best_tree <- tree
+    tree_list[[length(tree_list)+1]] <- tree
+    
+  }
+  if (i%%500 == 0){
+    if (length(unique(likelihood_curve[(i-500):i])) == 1){
+      flag <- 0
+
+      nni_trees <- nni(best_tree)
+      for (nni_tree in nni_trees){
+        edges <- tree$edge
+        tree$edge.length <- rep(1, length(tree$edge.length))
+        #maxcl <- LikelihoodCal(tree,muts_leaves,cell_meta$cluster_kmeans,state_lineages)
+        cl_list <- LikelihoodCal(tree,muts_leaves,cell_meta$cluster_kmeans,state_lineages)
+        cl <- cl_list$cl
+        if (cl > maxcl){
+          tree <- nni_tree
+          flag <- 1
+          maxcl <- cl
+          break
+        }
+      }
+      if (flag == 0){
+         best_tree_list[[length(best_tree_list)+1]] <- best_tree
+         maxcl_list <- c(maxcl_list,maxcl)
+         
+         tree <- rtree(length(tree_ct$tip.label), rooted = TRUE, tip.label = tree_ct$tip.label)
+         edges <- tree$edge
+         tree$edge.length <- rep(1, length(tree$edge.length))
+         maxcl <- LikelihoodCal(tree,muts_leaves,cell_meta$cluster_kmeans,state_lineages)
+         cl_list <- LikelihoodCal(tree,muts_leaves,cell_meta$cluster_kmeans,state_lineages)
+         maxcl <- cl_list$cl
+         maxlex <- cl_list$l_expression
+         maxlbar <- cl_list$l_barcode
+      }
+    }
+  }
+  if (i %% 100 == 0){
+    likelihood_check <- sprintf("After %g iterations, the best likelihood is %g.", 
+                                i, maxcl)
+    print(likelihood_check)
+  }
+}
+total_time <- proc.time() - ptm
+total_time
+```
+
+```{r}
+#local search program 3 alternative: local search using rSS + NNI using only barcode expression
+lambda <- 0.05
+
+#tree <- TreeNJ_h
+tree <- rtree(length(tree_ct$tip.label), rooted = TRUE, tip.label = tree_ct$tip.label)
+tree$edge.length <- rep(1, length(tree$edge.length))
+edges <- tree$edge
+#maxcl <- LikelihoodCal(tree,muts_leaves,cell_meta$cluster_kmeans,state_lineages)
+cl_list <- LikelihoodCal(tree,muts_leaves,cell_meta$cluster_kmeans,state_lineages,lambda = lambda)
+maxcl <- cl_list$cl
+maxlex <- cl_list$l_expression
+maxlbar <- cl_list$l_barcode
+ances_res <- AncesInfer(tree,muts_leaves,cell_meta$cluster_kmeans,state_lineages)
+muts <- ances_res[[1]]
+cell_state_labels <- ances_res[[2]]
+transfer_prob <- MutationCal(edges,muts)
+state_shift_prob <- ShiftprobCal(edges,cell_state_labels,state_lineages) 
+likelihood_curve <-c()
+maxIter <- 20000
+seeds <- runif(10000,1,99999)
+best_tree <- tree
+best_tree_list <- list()
+tree_list <- list()
+maxcl_list <- c()
+state_shift_dist <-c()
+ptm <- proc.time()
+LikelihoodCal_time <- 0
+TreeLC_time <- 0
+for (i in 1:maxIter){
+  c_time <- proc.time()
+  #LC_prob <- Cal_LC_prob(tree$edge,cell_state_labels,state_shift_prob,state_lineages)
+  #tree_new <- TreeLC2(tree,prob_internal = LC_prob)
+  tree_new <- TreeLC2(tree)
+  #tree_new <-  rNNI(tree,1,1)
+  TreeLC_time <- TreeLC_time + proc.time()-c_time
+  #cl <- LikelihoodCal(tree_new,muts_leaves,cell_meta$cluster_kmeans,state_lineages)
+  c_time <- proc.time()
+  #cl_list <- LikelihoodCal(tree_new,muts_leaves,cell_meta$cluster_kmeans,state_lineages,transfer_prob = transfer_prob, state_shift_prob = state_shift_prob,lambda = lambda)
+  cl_list <- LikelihoodCal(tree_new,muts_leaves,cell_meta$cluster_kmeans,state_lineages)
+  #temp <- transfer_prob$prob
+  #transfer_prob <- MutationCal(edges,muts)
+  #state_shift_dist <- c(state_shift_dist,norm(transfer_prob$prob-temp,'2'))
+  #temp <- state_shift_prob
+  #edges_new <- tree_new$edge
+  #state_shift_prob <- ShiftprobCal2(edges_new,cell_state_labels,state_lineages)
+  #state_shift_dist <- c(state_shift_dist,norm(state_shift_prob-temp,'f'))
+  cl <- cl_list$cl
+  l_barcode <- cl_list[[2]]
+  l_expression <- cl_list[[3]]
+  LikelihoodCal_time <- LikelihoodCal_time + proc.time()-c_time
+  likelihood_curve <- c(likelihood_curve,maxcl)
+  if (l_barcode > maxlbar){
+    #maxex <- l_expression
+    maxlbar <- l_barcode
+    #maxcl <- cl
+    tree <- tree_new
+    best_tree <- tree
+    tree_list[[length(tree_list)+1]] <- tree
+    
+  }
+  if (i%%500 == 0){
+    if (length(unique(likelihood_curve[(i-500):i])) == 1){
+      flag <- 0
+
+      nni_trees <- nni(best_tree)
+      for (nni_tree in nni_trees){
+        edges <- tree$edge
+        tree$edge.length <- rep(1, length(tree$edge.length))
+        #maxcl <- LikelihoodCal(tree,muts_leaves,cell_meta$cluster_kmeans,state_lineages)
+        cl_list <- LikelihoodCal(tree,muts_leaves,cell_meta$cluster_kmeans,state_lineages)
+        cl <- cl_list$cl
+        l_barcode <- cl_list$l_barcode
+        if (l_barcode > maxlbar){
+          tree <- nni_tree
+          maxbar <- l_barcode
+          flag <- 1
+          break
+        }
+      }
+      if (flag == 0){
+         best_tree_list[[length(best_tree_list)+1]] <- best_tree
+         maxcl_list <- c(maxcl_list,maxcl)
+         
+         tree <- rtree(length(tree_ct$tip.label), rooted = TRUE, tip.label = tree_ct$tip.label)
+         edges <- tree$edge
+         tree$edge.length <- rep(1, length(tree$edge.length))
+         maxcl <- LikelihoodCal(tree,muts_leaves,cell_meta$cluster_kmeans,state_lineages)
+         cl_list <- LikelihoodCal(tree,muts_leaves,cell_meta$cluster_kmeans,state_lineages)
+         maxcl <- cl_list$cl
+         maxlex <- cl_list$l_expression
+         maxlbar <- cl_list$l_barcode
+      }
+    }
+  }
+  if (i %% 100 == 0){
+    likelihood_check <- sprintf("After %g iterations, the best likelihood is %g.", 
+                                i, maxcl)
+    print(likelihood_check)
+  }
+}
+total_time <- proc.time() - ptm
+total_time
+```
+
+```{r}
+#LinRace test 2: what is the best settings for expression likelihood
+tree <- tree_ct
+#lambda range stays the same
+lambda <- 1
+
+#state lineage for state tree 1
+# state_lineages <- list()
+# for (i in 1:3){
+#   if (i ==1){
+#     lineage <- c(sort(unique(states_intermediate[states_leaves[,'cluster']==5])),sort(unique(states_intermediate[states_leaves[,'cluster']==i])))
+#     state_lineages[[length(state_lineages)+1]] <- lineage
+#   }else{
+#     lineage <- c(sort(unique(states_intermediate[states_leaves[,'cluster']==5])),sort(unique(states_intermediate[states_leaves[,'cluster']==6])),sort(unique(states_intermediate[states_leaves[,'cluster']==i])))
+#     state_lineages[[length(state_lineages)+1]] <- lineage
+#   }
+# }
+#state lineages for state tree 2
+state_lineages <- list()
+for (i in 1:6){
+    lineage <- c(sort(unique(states_intermediate[states_leaves[,'cluster']==8])),sort(unique(states_intermediate[states_leaves[,'cluster']==i])))
+    state_lineages[[length(state_lineages)+1]] <- lineage
+}
+
+ances_res <- AncesInfer(tree,muts_leaves,cell_meta$cluster_kmeans,state_lineages)
+muts <- ances_res[[1]]
+cell_state_labels <- ances_res[[2]]
+state_shift_prob <- ShiftprobCal(edges,cell_state_labels,state_lineages) 
+state_shift_prob$prob <- 0.4/(length(state_shift_prob$prob)-1)
+state_shift_prob[state_shift_prob$step == 0,2] <- 0.6
+
+color_tree <- c(1)
+# Old likelihood with fitted state shift prob
+cl_list <- LikelihoodCal(tree,muts_leaves,cell_meta$cluster_kmeans,state_lineages, lambda = lambda)
+# New Likelihood with original Q matrix
+#cl_list <- BLikelihoodCal(tree,muts_leaves,cell_meta$cluster_kmeans,state_lineages, lambda = lambda)
+# New Likelihood with trajectory pruned Q matrix
+#cl_list <- BLikelihoodCal(tree,muts_leaves,cell_meta$cluster_kmeans,state_lineages, lambda = lambda, pruneQ = TRUE)
+
+#cl_list <- LikelihoodCal(tree,muts_leaves,cell_meta$cluster_kmeans,state_lineages, lambda = lambda, state_shift_prob = state_shift_prob)
+cl_prev <- cl_list$cl
+treel <- list()
+treel[[length(treel)+1]] <- tree
+t = 1
+for (i in 1:1000){
+  t <- t + 1
+  tree <- TreeLC2(tree)
+  #Make sure that this is consistent with the initialization
+  cl_list <- LikelihoodCal(tree,muts_leaves,cell_meta$cluster_kmeans,state_lineages, lambda = lambda)
+  #cl_list <- BLikelihoodCal(tree,muts_leaves,cell_meta$cluster_kmeans,state_lineages, lambda = lambda)
+  #cl_list <- BLikelihoodCal(tree,muts_leaves,cell_meta$cluster_kmeans,state_lineages, lambda = lambda, pruneQ = TRUE)
+  cl <- cl_list$cl
+  cl_prev <- cl
+  treel[[length(treel)+1]] <- tree
+  color_tree <- c(color_tree,t)
+  if (i%%100 == 0){
+    t = 1
+    tree <- tree_ct
+  }
+}
+
+
+
+data_df <- data.frame(cl = numeric(),l_barcode = numeric(),l_expression = numeric(),rf = numeric())
+for (tree in treel){
+  cl_list <- LikelihoodCal(tree,muts_leaves,cell_meta$cluster_kmeans,state_lineages, lambda = lambda)
+  #cl_list <- BLikelihoodCal(tree,muts_leaves,cell_meta$cluster_kmeans,state_lineages, lambda = lambda)
+  #cl_list <- BLikelihoodCal(tree,muts_leaves,cell_meta$cluster_kmeans,state_lineages, lambda = lambda, pruneQ = TRUE)
+  temp_df <- data.frame(cl = cl_list$cl,l_barcode = cl_list$l_barcode,l_expression = cl_list$l_expression,rf = RF.dist(tree, tree_ct, normalize = TRUE))
+  data_df <- rbind(data_df,temp_df)
+}
+
+p <- ggplot(data = data_df)
+p <- p + geom_point(aes(x = rf,y = cl))
+p
+
+p <- ggplot(data = data_df)
+p <- p + geom_point(aes(x = rf,y = l_barcode, color = color_tree)) + labs(color = "iteration label")
+p
+
+p <- ggplot(data = data_df)
+p <- p + geom_point(aes(x = rf,y = l_expression, color = color_tree)) + labs(color = "iteration label")
+p
+```
+
+```{r}
+dat <- readRDS('result-10-21.rds')
+data_df <- data.frame(cl = numeric(),l_barcode = numeric(),l_expression = numeric(),rf = numeric(),run = numeric())
+for (i in 1:length(dat)){
+  tree_list <- dat[[i]]
+  for (tree in tree_list){
+    cl_list <- LikelihoodCal(tree,muts_leaves,cell_meta$cluster_kmeans,state_lineages, lambda = lambda)
+    #cl_list <- BLikelihoodCal(tree,muts_leaves,cell_meta$cluster_kmeans,state_lineages, lambda = lambda)
+    #cl_list <- BLikelihoodCal(tree,muts_leaves,cell_meta$cluster_kmeans,state_lineages, lambda = lambda, pruneQ = TRUE)
+    temp_df <- data.frame(cl = cl_list$cl,l_barcode = cl_list$l_barcode,l_expression = cl_list$l_expression,rf = RF.dist(tree, tree_ct, normalize = TRUE), run = i)
+    data_df <- rbind(data_df,temp_df)
+  }
+}
+
+p <- ggplot(data = data_df)
+p <- p + geom_point(aes(x = rf,y = cl,color = run)) + labs(color = "Run label")
+p
+
+p <- ggplot(data = data_df)
+p <- p + geom_point(aes(x = rf,y = l_barcode, color = run)) + labs(color = "Run label")
+p
+
+p <- ggplot(data = data_df)
+p <- p + geom_point(aes(x = rf,y = l_expression, color = run)) + labs(color = "Run label")
+p
+```
+
+```{r}
+#local search program 5: local search using NNI (steepest ascent)
+lambda <- 1
+
+tree <- tree_init
+#tree <- TreeNJ_h
+tree$edge.length <- rep(1, length(tree$edge.length))
+edges <- tree$edge
+#maxcl <- LikelihoodCal(tree,muts_leaves,cell_meta$cluster_kmeans,state_lineages)
+cl_list <- LikelihoodCal(tree,muts_leaves,cell_meta$cluster_kmeans,state_lineages,lambda = lambda)
+maxcl <- cl_list$cl
+maxlex <- cl_list$l_expression
+maxlbar <- cl_list$l_barcode
+ances_res <- AncesInfer(tree,muts_leaves,cell_meta$cluster_kmeans,state_lineages)
+muts <- ances_res[[1]]
+cell_state_labels <- ances_res[[2]]
+transfer_prob <- MutationCal(edges,muts)
+state_shift_prob <- ShiftprobCal(edges,cell_state_labels,state_lineages) 
+likelihood_curve <-c()
+maxIter <- 100000
+seeds <- runif(10000,1,99999)
+best_tree <- tree
+best_tree_list <- list()
+tree_list <- list()
+maxcl_list <- c()
+state_shift_dist <-c()
+ptm <- proc.time()
+LikelihoodCal_time <- 0
+TreeLC_time <- 0
+for (i in 1:maxIter){
+  c_time <- proc.time()
+  flag <- 0
+  nni_trees <- nni(tree)
+  for (i in 1:length(nni_trees)){
+    nni_tree <- nni_trees[[i]]
+    edges <- nni_tree$edge
+    nni_tree$edge.length <- rep(1, length(nni_tree$edge.length))
+    #maxcl <- LikelihoodCal(tree,muts_leaves,cell_meta$cluster_kmeans,state_lineages)
+    cl_list <- LikelihoodCal(nni_tree,muts_leaves,cell_meta$cluster_kmeans,state_lineages)
+    cl <- cl_list$cl
+    if (cl > maxcl){
+      maxcl <- cl
+      i_max <- i
+      flag <- 1
+    }
+  }
+  
+  tree <- nni_trees[[i]]
+  tree_list[[length(tree_list)+1]] <- tree
+  likelihood_curve <- c(likelihood_curve,maxcl)
+  if (flag == 0){
+      best_tree_list[[length(best_tree_list)+1]] <- best_tree
+      maxcl_list <- c(maxcl_list,maxcl)
+      break
+  }
+  if (i %% 100 == 0){
+    likelihood_check <- sprintf("After %g iterations, the best likelihood is %g.", 
+                                i, maxcl)
+    print(likelihood_check)
+  }
+}
+total_time <- proc.time() - ptm
+total_time
+```
+
+```{r}
+#local search program 6: local search using rTS (balanced)
+lambda <- 1
+
+tree <- stree(length(tree_ct$tip.label), tip.label = sample(tree_ct$tip.label),type = "balanced")
+#tree <- TreeNJ_h
+tree$edge.length <- rep(1, length(tree$edge.length))
+edges <- tree$edge
+#maxcl <- LikelihoodCal(tree,muts_leaves,cell_meta$cluster_kmeans,state_lineages)
+cl_list <- LikelihoodCal(tree,muts_leaves,cell_meta$cluster_kmeans,state_lineages,lambda = lambda)
+maxcl <- cl_list$cl
+maxlex <- cl_list$l_expression
+maxlbar <- cl_list$l_barcode
+ances_res <- AncesInfer(tree,muts_leaves,cell_meta$cluster_kmeans,state_lineages)
+muts <- ances_res[[1]]
+cell_state_labels <- ances_res[[2]]
+transfer_prob <- MutationCal(edges,muts)
+state_shift_prob <- ShiftprobCal(edges,cell_state_labels,state_lineages) 
+likelihood_curve <-c()
+maxIter <- 100000
+seeds <- runif(10000,1,99999)
+best_tree <- tree
+best_tree_list <- list()
+tree_list <- list()
+maxcl_list <- c()
+state_shift_dist <-c()
+ptm <- proc.time()
+LikelihoodCal_time <- 0
+TreeLC_time <- 0
+for (i in 1:maxIter){
+  c_time <- proc.time()
+
+  tree_new <- tree
+  tip.label <- tree_new$tip.label
+  tips_swap <- sample(tip.label,2)
+  tip.label[which(tip.label== tips_swap[1])] <- tips_swap[2]
+  tip.label[which(tip.label== tips_swap[2])] <- tips_swap[1]
+  
+  
+  tree_new$tip.label <- tip.label
+  TreeLC_time <- TreeLC_time + proc.time()-c_time
+  cl <- LikelihoodCal(tree_new,muts_leaves,cell_meta$cluster_kmeans,state_lineages)
+  c_time <- proc.time()
+  #cl_list <- LikelihoodCal(tree_new,muts_leaves,cell_meta$cluster_kmeans,state_lineages,transfer_prob = transfer_prob, state_shift_prob = state_shift_prob,lambda = lambda)
+  #cl_list <- LikelihoodCal2(tree_new,muts_leaves,cell_meta$cluster_kmeans,state_lineages)
+  cl <- cl_list$cl
+  LikelihoodCal_time <- LikelihoodCal_time + proc.time()-c_time
+  likelihood_curve <- c(likelihood_curve,maxcl)
+  if (cl > maxcl){
+    maxcl <- cl
+    tree <- tree_new
+    best_tree <- tree
+    tree_list[[length(tree_list)+1]] <- tree
+  }
+  if (i%%500 == 0){
+    if (length(unique(likelihood_curve[(i-500):i])) == 1){
+      
+      best_tree_list[[length(best_tree_list)+1]] <- best_tree
+      maxcl_list <- c(maxcl_list,maxcl)
+      
+      set.seed(seeds[i/10])
+      tree <- rtree(length(tree_ct$tip.label), rooted = TRUE, tip.label = tree_ct$tip.label)
+      #tree <- tree_init
+      edges <- tree$edge
+      tree$edge.length <- rep(1, length(tree$edge.length))
+      #maxcl <- LikelihoodCal(tree,muts_leaves,cell_meta$cluster_kmeans,state_lineages)
+      cl_list <- LikelihoodCal(tree,muts_leaves,cell_meta$cluster_kmeans,state_lineages)
+      maxcl <- cl_list$cl
+      ances_res <- AncesInfer(tree,muts_leaves,cell_meta$cluster_kmeans,state_lineages)
+      muts <- ances_res[[1]]
+      cell_state_labels <- ances_res[[2]]
+      transfer_prob <- MutationCal(edges,muts)
+      state_shift_prob <- ShiftprobCal(edges,cell_state_labels,state_lineages)
+    }
+  }
+  if (i %% 100 == 0){
+    likelihood_check <- sprintf("After %g iterations, the best likelihood is %g.", 
+                                i, maxcl)
+    print(likelihood_check)
+  }
+}
+total_time <- proc.time() - ptm
+total_time
+```
+```{r}
+#pareto's local search
+NeighborTrees <- function(tree,size){
+  tree_list <- list()
+  for (i in 1:size){
+    tree_neighbor <- TreeLC2(tree)
+    tree_list[[length(tree_list)+1]] <- tree_neighbor
+  }
+  return(tree_list)
+}
+
+lambda <- 1
+nstart <- 5
+neighborhood_size <- 10
+
+A_0 <- rmtree(nstart,length(tree_ct$tip.label), rooted = TRUE, tip.label = tree_ct$tip.label)
+Likelihood_df <- data.frame(tree = numeric(),likelhood_bar = numeric(),likelihood_ex = numeric())
+for (i in 1:length(A_0)){
+  tree <- A_0[[i]]
+  cl_list <- LikelihoodCal(tree,muts_leaves,cell_meta$cluster_kmeans,state_lineages,lambda = lambda)
+  lex <- cl_list$l_expression
+  lbar <- cl_list$l_barcode
+  temp <- data.frame(tree = i,likelihood_bar = lbar,likelihood_ex = lex,cl = cl_list$cl)
+  Likelihood_df <- rbind(Likelihood_df,temp)
+}
+
+s <- rep(0,nstart)
+
+maxIter <- 10000
+seeds <- runif(10000,1,99999)
+ptm <- proc.time()
+LikelihoodCal_time <- 0
+TreeLC_time <- 0
+tree_counter <- 5
+
+for (i in 1:maxIter){
+  #selection step
+  index <- sample(which(s == 0), 1, replace=TRUE)
+  s[index] <- 1
+  tree_s <- A_0[[index]]
+  lex_s <- Likelihood_df$likelihood_ex[index]
+  lbar_s <- Likelihood_df$likelihood_bar[index]
+  
+  N_trees <- NeighborTrees(tree_s,neighborhood_size)
+  for (tree_neighbor in N_trees){
+    cl_list <- LikelihoodCal(tree_neighbor,muts_leaves,cell_meta$cluster_kmeans,state_lineages,lambda = lambda)
+
+    if ((lex > lex_s)|(lbar > lbar_s)){
+      tree_counter <- tree_counter + 1
+      temp <- data.frame(tree = tree_counter,likelihood_bar = cl_list$l_barcode,likelihood_ex = cl_list$l_expression,cl = cl_list$cl)
+      Likelihood_df <- rbind(Likelihood_df,temp)
+      
+      for (j in which(s == 0)){
+        if ((Likelihood_df$likelihood_ex[j]< lex)&(Likelihood_df$likelihood_bar[j]< lbar)){
+          s[j] <- 1
+        }
+      }
+        
+      A_0[[length(A_0)+1]] <- tree_neighbor
+      s[[length(s)+1]] <- 0
+    }
+  }
+  
+  
+  if (i %% 10 == 0){
+    likelihood_check <- sprintf("After %g iterations, the best likelihood is %g.", 
+                                i, max(Likelihood_df$cl))
+    print(likelihood_check)
+  }
+  if(sum(s)==length(s)){
+    break
+  }
+  
+}
+
+  best_tree <- A_0[which.max(Likelihood_df$cl)]
+```
