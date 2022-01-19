@@ -28,20 +28,23 @@ compute_Q <- function(X,r,N){
 
 update_dist <- function(X,index1,index2,labels,new_node_id){
   X_new <- as.matrix(X)
-  X_new <- X_new[-c(index1,index2),]
-  X_new <- X_new[,-c(index1,index2)]
+  #X_new <- X_new[-c(index1,index2),]
+  #X_new <- X_new[,-c(index1,index2)]
   N <- length(labels)
 
-  labels_new = c(new_node_id,labels[-c(index1,index2)])
-  results <- matrix(0, N-1, N-1)
-  results[2:(N-1),2:(N-1)] <- X_new
-  for (i in 2:N-1){
+  labels_new = c(new_node_id,labels)
+  results <- matrix(0, N+1, N+1)
+  results[2:(N+1),2:(N+1)] <- X_new
+  for (i in 2:N+1){
     dist_temp <- max(0.5*(X[distdex(i,index1,N)]+X[distdex(i,index2,N)]-X[distdex(index1,index2,N)]),0)
     results[1,i] <- dist_temp
     results[i,1] <- dist_temp
   }
   rownames(results) <- labels_new
   colnames(results) <- labels_new
+  
+  results <- results[-c(index1+1,index2+1),]
+  results <- results[,-c(index1+1,index2+1)]
 
   return(as.dist(results))
 }
