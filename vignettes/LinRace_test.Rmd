@@ -28,7 +28,7 @@ devtools::load_all()
 # mutation rate mu: 0.05, 0.1, 0.2,0.4
 # 5 datasets each settings
 
-ncells <- 128
+ncells <- 32
 #state tree 1
 #phyla <- read.tree(text='((t1:4, (t2:2, t3:2):2):2);')
 #state tree 2
@@ -40,9 +40,9 @@ max_walk <- 8
 p_a <- 0.8
 n_cif <- 30
 n_diff <- 20
-cif_step <- 0.2
+cif_step <- 0.5
 #cif_step <- 0.2
-mu <- 0.1
+mu <- 0.05
 #mu <- 0.01
 
 p_d <- 0
@@ -67,6 +67,9 @@ muts <- cifs[[7]]
 rownames(muts) <- paste("cell",states[,4],sep = "_")
 muts_leaves <- muts[1:ncells,]
 
+#randomize muts_leaves
+muts_leaves <- muts[sample(nrow(muts_leaves)),]
+
 tree_ct <- cifs[[4]]
 tip_label <- c()
 for (node in tree_ct$tip.label){
@@ -78,12 +81,12 @@ tree_ct$tip.label <- tip_label
 #simulate true counts
 true_counts_res <- CIF2Truecounts(ngenes = 500,ncif = n_cif,ge_prob = 0.3,ncells = ncells, cif_res = cif_res)
 
-gene_expression_dir <- ""
-cell_meta_dir <- ""
-tree_gt_dir <- ""
-write.csv(true_counts_res[[1]],gene_expression_dir,row.names = FALSE)
-write.csv(states_leaves,cell_meta_dir)
-write.tree(tree_ct,tree_gt_dir)
+#gene_expression_dir <- ""
+#cell_meta_dir <- ""
+#tree_gt_dir <- ""
+#write.csv(true_counts_res[[1]],gene_expression_dir,row.names = FALSE)
+#write.csv(states_leaves,cell_meta_dir)
+#write.tree(tree_ct,tree_gt_dir)
 ```
 
 ```{r}
@@ -133,6 +136,7 @@ TreeNJ_h <- multi2di(Treenj)
 TreeNJ_h$edge.length <- rep(1, length(TreeNJ_h$edge.length))
 print( RF.dist(TreeNJ_h, tree_ct, normalize = TRUE) )
 ```
+
 ```{r}
 library(destiny)
 #Pairwise gene expression distance
@@ -215,6 +219,10 @@ for (i in 1:6){
 cell_meta <- as.data.frame(states_leaves)
 cell_meta$cluster_kmeans <- states_intermediate
 muts_leaves <- MutsTransform(muts_leaves)
+
+
+write.tree(tree,file = "~/tree_asym_16")
+write.tree(TreeNJ_h,file = "~/tree_NJ_16")
 
 #lambda <- 1
 ```

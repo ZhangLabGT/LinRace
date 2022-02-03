@@ -21,34 +21,75 @@ compute_Q <- function(X,r,N){
   Q <- X
   for (i in 1:length(X)){
     coord <- rowcol(i,N)
-    Q[i] <-(N-2) * X[i] - sum(r[coord])
+    Q[i] <- X[i] - sum(r[coord])/(N-2)
   }
   return(Q)
 }
 
 update_dist <- function(X,index1,index2,labels,new_node_id){
-  X_new <- as.matrix(X)
-  X_new <- X_new[-c(index1,index2),]
-  X_new <- X_new[,-c(index1,index2)]
+  X <- as.matrix(X)
   N <- length(labels)
 
-  labels_new = c(new_node_id,labels[-c(index1,index2)])
-  results <- matrix(0, N-1, N-1)
-  results[2:(N-1),2:(N-1)] <- X_new
-  for (i in 2:N-1){
-    ###########
-    dist_temp <- max(0.5*(X[distdex(i,index1,N)]+X[distdex(i,index2,N)]-X[distdex(index1,index2,N)]),0)
+  labels_new = c(new_node_id,labels)
+  results <- matrix(0, N+1, N+1)
+  results[2:(N+1),2:(N+1)] <- X
+
+  for (i in 2:(N+1)){
+    dist_temp <- 0.5*(X[i-1,index1]+X[i-1,index2]-X[index1,index2])
     results[1,i] <- dist_temp
     results[i,1] <- dist_temp
   }
   rownames(results) <- labels_new
   colnames(results) <- labels_new
 
+  results <- results[-c(index1+1,index2+1),]
+  results <- results[,-c(index1+1,index2+1)]
+
   return(as.dist(results))
 }
 
+update_dist_multi <- function(X,index_list,labels,new_node_id){
+  X <- as.matrix(X)
+  #X_new <- X_new[-c(index1,index2),]
+  #X_new <- X_new[,-c(index1,index2)]
+  N <- length(labels)
 
-NJ_asym <- function(X){
+  labels_new = c(new_node_id,labels)
+  results <- matrix(0, N+1, N+1)
+  results[2:(N+1),2:(N+1)] <- X
+  innerdist_sum <- 0
+  for (i in 1:(length(index_list)-1)){
+    innerdist_sum <- innerdist_sum + X[index_list[i],index_list[i+1]]
+  }
+  for (i in 2:(N+1)){
+    out_dist_sum <- 0
+    for (index in index_list){
+      out_dist_sum <- out_dist_sum + X[i-1,index]
+    }
+
+    dist_temp <- 0.5*(out_dist_sum-innerdist_sum)
+
+    results[1,i] <- dist_temp
+    results[i,1] <- dist_temp
+  }
+  rownames(results) <- labels_new
+  colnames(results) <- labels_new
+
+
+  #browser()
+  results <- tryCatch({
+    results <- results[-c(index_list+1),]
+    results <- results[,-c(index_list+1)]
+    return(as.dist(results))
+  }, error = function(e) {
+    print(paste("Only one node left."))
+    newick <- labels_new[1]
+    return(newick)
+  })
+}
+
+
+NJ <- function(X){
   if (is.matrix(X)) X <- as.dist(X)
   if (anyNA(X))
     stop("missing values are not allowed in the distance matrix\nConsider using njs()")
@@ -69,8 +110,6 @@ NJ_asym <- function(X){
     coord_merge <- rowcol(Q_min,N)
     merge_member_1 = coord_merge[1]
     merge_member_2 = coord_merge[2]
-    print(labels[merge_member_1])
-    print(labels[merge_member_2])
 
     #compute distances between the merged node and the new node
     dist_merged_1 <- X[Q_min]/2 - (r[merge_member_1] - r[merge_member_2])/(2*(N-2))
@@ -81,19 +120,14 @@ NJ_asym <- function(X){
     }
     dist_merged_2 <- X[Q_min] - dist_merged_1
 
-    # The label for the new node will be the newick string that combines the two merged nodes
     node_definition <- sprintf('(%s:%f, %s:%f)',
                                labels[merge_member_1], dist_merged_1,labels[merge_member_2], dist_merged_2)
 
-    # Calculating the distance between the new node and other nodes and updating the distance matrix
     X <- update_dist(X,merge_member_1,merge_member_2,labels,node_definition)
 
     N <- as.integer(attr(X, "Size"))
     labels <- attr(X, "Labels")
-    #View(as.matrix(X))
   }
-
-  #When there is only three nodes left, we simply join two of the nodes and then with the third.
   merge_member_1 = labels[1]
   merge_member_2 = labels[2]
   r <- Diver_cal(X,N)
@@ -118,6 +152,193 @@ NJ_asym <- function(X){
   tree_nj <- read.tree(text = newick)
   return(tree_nj)
 }
+
+NJ_asym <- function(X,muts,states,state_lineages){
+  if (is.matrix(X)) X <- as.dist(X)
+  if (anyNA(X))
+    stop("missing values are not allowed in the distance matrix\nConsider using njs()")
+  if (any(is.infinite(X)))
+    stop("infinite values are not allowed in the distance matrix")
+  N <- as.integer(attr(X, "Size"))
+  if (N < 3) stop("cannot build an NJ tree with less than 3 observations")
+  labels <- attr(X, "Labels")
+  if (is.null(labels)) labels <- as.character(1:N)
+
+  node_definition <- NULL
+
+  newick_lookup <- data.frame(newick = character(),index = numeric())
+  while(N > 2){
+    r <- Diver_cal(X,N)
+    Q <- compute_Q(X,r,N)
+    Q_min <- which(Q == min(Q))
+	  coord_merge <- c()
+	  for (entry in Q_min){
+		  coord_merge <- c(coord_merge,rowcol(entry,N))
+	  }
+	  coord_merge <- unique(coord_merge)
+
+	  #browser()
+	  muts_merge <- muts[coord_merge,]
+	  DT <- as.data.table(muts_merge)
+	  group_count <- lapply(1:nrow(DT), function(i){
+	    DT_group_count <- apply(DT, 1, function(x) DT_compare <- sum(which(sum(x != DT[i,]) == 0)))
+	    #DT_group_count <- sum(DT_group_count)
+	    })
+	  for (i in 1:length(group_count)){
+	    if (sum(group_count[[i]]) >1){
+	      coord_merge <- coord_merge[which(group_count[[i]]==1)]
+	      break
+	    }
+	  }
+
+	  states_merge <- states[coord_merge]
+	  tree_recon <- FindExpTree(states,labels = labels[coord_merge],state_lineages,muts,newick_lookup,maxIter = 200)
+	  node_definition <- tree_recon[[1]]
+	  n <- nchar(node_definition)
+	  if(substr(node_definition, n, n) == ';'){
+	    node_definition <- substr(node_definition,1,n-1)
+	  }
+	  merged_state <- tree_recon[[2]]
+	  merged_barcode <- tree_recon[[3]]
+	  states <- c(states,merged_state)
+	  muts <- rbind(muts,merged_barcode)
+
+	  temp <- data.frame(newick = node_definition,index = length(states))
+	  newick_lookup <- rbind(newick_lookup,temp)
+
+    #browser()
+	  X <- update_dist_multi(X,coord_merge,labels,node_definition)
+
+    if (is.character(X)){
+      #browser()
+      print(X)
+      if(substr(X,nchar(X),nchar(X))!=";"){
+        X <- paste(X,";",sep = "")
+      }
+      tree_nj <- read.tree(text = X)
+      return(tree_nj)
+    }else{
+      N <- as.integer(attr(X, "Size"))
+      labels <- attr(X, "Labels")
+    }
+  	# }else{
+  	#   coord_merge <- rowcol(Q_min,N)
+  	#   merge_member_1 = coord_merge[1]
+  	#   merge_member_2 = coord_merge[2]
+  	#
+  	#   #compute distances between the merged node and the new node
+  	#   dist_merged_1 <- X[Q_min]/2 - (r[merge_member_1] - r[merge_member_2])/(2*(N-2))
+  	#   if (dist_merged_1 < 0){
+  	#     dist_merged_1 <- 0
+  	#   } else if (dist_merged_1 > X[Q_min]){
+  	#     dist_merged_1 <- X[Q_min]
+  	#   }
+  	#   dist_merged_2 <- X[Q_min] - dist_merged_1
+  	#
+  	#   for (i in coord_merge){
+  	#     label <- labels[i]
+  	#     n <- nchar(label)
+  	#     if(substr(label, n, n) == ';'){
+  	#       labels[i] <- substr(label,1,n-1)
+  	#     }
+  	#   }
+  	#
+  	#   node_definition <- sprintf('(%s:%f, %s:%f)',
+  	#                              labels[merge_member_1], dist_merged_1,labels[merge_member_2], dist_merged_2)
+  	#
+  	#   X <- update_dist(X,merge_member_1,merge_member_2,labels,node_definition)
+  	#
+  	#   N <- as.integer(attr(X, "Size"))
+  	#   labels <- attr(X, "Labels")
+  	# }
+  }
+
+  for (i in 1:length(labels)){
+    label <- labels[i]
+    n <- nchar(label)
+    if(substr(label, n, n) == ';'){
+      labels[i] <- substr(label,1,n-1)
+    }
+  }
+  # ...and finally create the newick string describing the whole tree.
+  newick = sprintf("(%s:%f, %s:%f);",labels[1], 1,
+                   labels[2], 1)
+  print(newick)
+  #browser()
+  # return the phylo object transformed from newick.
+  tree_nj <- read.tree(text = newick)
+  return(tree_nj)
+}
+
+FindExpTree <- function(states,labels,state_lineages,muts,newick_lookup,maxIter){
+  #browser()
+  for (i in 1:length(labels)){
+    label <- labels[i]
+    n <- nchar(label)
+    if(substr(label, n, n) == ';'){
+      labels[i] <- substr(label,1,n-1)
+    }
+  }
+
+	tree <- rtree(length(labels), rooted = TRUE, tip.label = labels)
+	tree$edge.length <- rep(1, length(tree$edge.length))
+	edges <- tree$edge
+	#maxcl <- LikelihoodCal(tree,muts_leaves,cell_meta$cluster_kmeans,state_lineages)
+	max_likelihood <- LikelihoodCal_Exp(tree,states,state_lineages,newick_lookup)
+
+	likelihood_curve <-c()
+	seeds <- runif(10000,1,99999)
+	best_tree <- tree
+	best_tree_list <- list()
+	maxl_list <- c()
+	ptm <- proc.time()
+	LikelihoodCal_time <- 0
+	TreeLC_time <- 0
+	for (i in 1:maxIter){
+	  c_time <- proc.time()
+
+	  tree_new <- TreeLC2(tree)
+	  #tree_new <-  rNNI(tree,1,1)
+	  TreeLC_time <- TreeLC_time + proc.time()-c_time
+	  #cl <- LikelihoodCal(tree_new,muts_leaves,cell_meta$cluster_kmeans,state_lineages)
+	  c_time <- proc.time()
+	  likelihood_new <- LikelihoodCal_Exp(tree_new,states,state_lineages,newick_lookup)
+	  #cl_list <- LikelihoodCal2(tree_new,muts_leaves,cell_meta$cluster_kmeans,state_lineages)
+	  LikelihoodCal_time <- LikelihoodCal_time + proc.time()-c_time
+	  likelihood_curve <- c(likelihood_curve,max_likelihood)
+	  if (likelihood_new > max_likelihood){
+  		max_likelihood <- likelihood_new
+  		tree <- tree_new
+  		best_tree <- tree
+	  }
+	  if (i %% 100 == 0){
+  		likelihood_check <- sprintf("After %g iterations, the best likelihood is %g.",
+  									i, max_likelihood)
+  		print(likelihood_check)
+	  }
+	  if (i%%20 == 0){
+  		if (length(unique(likelihood_curve[(i-20):i])) == 1){
+  		  #record the local optima, and
+  		  best_tree_list[[length(best_tree_list)+1]] <- best_tree
+  		  maxl_list <- c(maxl_list,max_likelihood)
+
+  		  tree <- rtree(length(labels), rooted = TRUE, tip.label = labels)
+  		  tree$edge.length <- rep(1, length(tree$edge.length))
+  		  #maxcl <- LikelihoodCal(tree,muts_leaves,cell_meta$cluster_kmeans,state_lineages)
+  		  max_likelihood <- LikelihoodCal_Exp(tree,states,state_lineages,newick_lookup)
+  		}
+	  }
+	}
+	#browser()
+	#return the best tree found so far
+	best_tree <- best_tree_list[[which.max(maxl_list)]]
+	ances_res <- AncesInfer_sub(tree,muts,states,state_lineages,newick_lookup)
+	root_barcode <- ances_res[[1]][dim(ances_res[[1]])[1],]
+	root_state_label <- ances_res[[2]][length(ances_res[[2]])]
+
+	return(list(write_tree(best_tree,quoting = 0),root_state_label,root_barcode))
+}
+
 
 
 DivideTree <- function(tree, depth_split){
