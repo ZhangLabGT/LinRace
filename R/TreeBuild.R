@@ -153,6 +153,14 @@ NJ <- function(X){
   return(tree_nj)
 }
 
+#' LinRace main function: asymmetric division based Neighbor Joining
+#'
+#' @param X input distance matrix
+#' @param muts lineage barcode matrix
+#' @param states cell states of single cells
+#' @param state_lineages the lineages that makes the state network from the root state to leaf states
+#' @import data.table
+#' @export
 NJ_asym <- function(X,muts,states,state_lineages){
   if (is.matrix(X)) X <- as.dist(X)
   if (anyNA(X))
@@ -177,13 +185,13 @@ NJ_asym <- function(X,muts,states,state_lineages){
 	  }
 	  coord_merge <- unique(coord_merge)
 
-	  #browser()
 	  muts_merge <- muts[coord_merge,]
 	  DT <- as.data.table(muts_merge)
 	  group_count <- lapply(1:nrow(DT), function(i){
 	    DT_group_count <- apply(DT, 1, function(x) DT_compare <- sum(which(sum(x != DT[i,]) == 0)))
 	    #DT_group_count <- sum(DT_group_count)
 	    })
+	  #sorting
 	  for (i in 1:length(group_count)){
 	    if (sum(group_count[[i]]) >1){
 	      coord_merge <- coord_merge[which(group_count[[i]]==1)]
@@ -191,66 +199,68 @@ NJ_asym <- function(X,muts,states,state_lineages){
 	    }
 	  }
 
-	  states_merge <- states[coord_merge]
-	  tree_recon <- FindExpTree(states,labels = labels[coord_merge],state_lineages,muts,newick_lookup,maxIter = 200)
-	  node_definition <- tree_recon[[1]]
-	  n <- nchar(node_definition)
-	  if(substr(node_definition, n, n) == ';'){
-	    node_definition <- substr(node_definition,1,n-1)
-	  }
-	  merged_state <- tree_recon[[2]]
-	  merged_barcode <- tree_recon[[3]]
-	  states <- c(states,merged_state)
-	  muts <- rbind(muts,merged_barcode)
+	  if(length(coord_merge)>2){
+	    states_merge <- states[coord_merge]
+	    #consider barcode when all barcodes are different
+	    tree_recon <- FindExpTree(states,labels = labels[coord_merge],state_lineages,muts,newick_lookup,maxIter = 200)
+	    node_definition <- tree_recon[[1]]
+	    n <- nchar(node_definition)
+	    if(substr(node_definition, n, n) == ';'){
+	      node_definition <- substr(node_definition,1,n-1)
+	    }
+	    merged_state <- tree_recon[[2]]
+	    merged_barcode <- tree_recon[[3]]
+	    states <- c(states,merged_state)
+	    muts <- rbind(muts,merged_barcode)
 
-	  temp <- data.frame(newick = node_definition,index = length(states))
-	  newick_lookup <- rbind(newick_lookup,temp)
+	    temp <- data.frame(newick = node_definition,index = length(states))
+	    newick_lookup <- rbind(newick_lookup,temp)
 
-    #browser()
-	  X <- update_dist_multi(X,coord_merge,labels,node_definition)
+	    #browser()
+	    X <- update_dist_multi(X,coord_merge,labels,node_definition)
 
-    if (is.character(X)){
+	    if (is.character(X)){
+	      #browser()
+	      print(X)
+	      if(substr(X,nchar(X),nchar(X))!=";"){
+	        X <- paste(X,";",sep = "")
+	      }
+	      tree_nj <- read.tree(text = X)
+	      return(tree_nj)
+	    }else{
+	      N <- as.integer(attr(X, "Size"))
+	      labels <- attr(X, "Labels")
+	    }
+	  }else{
+  	  merge_member_1 = coord_merge[1]
+  	  merge_member_2 = coord_merge[2]
+
+  	  #compute distances between the merged node and the new node
+  	  index <- distdex(merge_member_1,merge_member_2,N)
+  	  dist_merged_1 <- X[index]/2 - (r[merge_member_1] - r[merge_member_2])/(2*(N-2))
+  	  if (dist_merged_1 < 0){
+  	    dist_merged_1 <- 0
+  	  } else if (dist_merged_1 > X[index]){
+  	    dist_merged_1 <- X[index]
+  	  }
+  	  dist_merged_2 <- X[index] - dist_merged_1
+
+  	  for (i in coord_merge){
+  	    label <- labels[i]
+  	    n <- nchar(label)
+  	    if(substr(label, n, n) == ';'){
+  	      labels[i] <- substr(label,1,n-1)
+  	    }
+  	  }
       #browser()
-      print(X)
-      if(substr(X,nchar(X),nchar(X))!=";"){
-        X <- paste(X,";",sep = "")
-      }
-      tree_nj <- read.tree(text = X)
-      return(tree_nj)
-    }else{
-      N <- as.integer(attr(X, "Size"))
-      labels <- attr(X, "Labels")
-    }
-  	# }else{
-  	#   coord_merge <- rowcol(Q_min,N)
-  	#   merge_member_1 = coord_merge[1]
-  	#   merge_member_2 = coord_merge[2]
-  	#
-  	#   #compute distances between the merged node and the new node
-  	#   dist_merged_1 <- X[Q_min]/2 - (r[merge_member_1] - r[merge_member_2])/(2*(N-2))
-  	#   if (dist_merged_1 < 0){
-  	#     dist_merged_1 <- 0
-  	#   } else if (dist_merged_1 > X[Q_min]){
-  	#     dist_merged_1 <- X[Q_min]
-  	#   }
-  	#   dist_merged_2 <- X[Q_min] - dist_merged_1
-  	#
-  	#   for (i in coord_merge){
-  	#     label <- labels[i]
-  	#     n <- nchar(label)
-  	#     if(substr(label, n, n) == ';'){
-  	#       labels[i] <- substr(label,1,n-1)
-  	#     }
-  	#   }
-  	#
-  	#   node_definition <- sprintf('(%s:%f, %s:%f)',
-  	#                              labels[merge_member_1], dist_merged_1,labels[merge_member_2], dist_merged_2)
-  	#
-  	#   X <- update_dist(X,merge_member_1,merge_member_2,labels,node_definition)
-  	#
-  	#   N <- as.integer(attr(X, "Size"))
-  	#   labels <- attr(X, "Labels")
-  	# }
+  	  node_definition <- sprintf('(%s:%f, %s:%f)',
+  	                             labels[merge_member_1], dist_merged_1,labels[merge_member_2], dist_merged_2)
+
+  	  X <- update_dist(X,merge_member_1,merge_member_2,labels,node_definition)
+
+  	  N <- as.integer(attr(X, "Size"))
+  	  labels <- attr(X, "Labels")
+  	}
   }
 
   for (i in 1:length(labels)){
@@ -263,13 +273,21 @@ NJ_asym <- function(X,muts,states,state_lineages){
   # ...and finally create the newick string describing the whole tree.
   newick = sprintf("(%s:%f, %s:%f);",labels[1], 1,
                    labels[2], 1)
-  print(newick)
+  #print(newick)
   #browser()
   # return the phylo object transformed from newick.
   tree_nj <- read.tree(text = newick)
   return(tree_nj)
 }
 
+
+#' LinRace main function: asymmetric division based Neighbor Joining
+#'
+#' @param X input distance matrix
+#' @param muts lineage barcode matrix
+#' @param states cell states of single cells
+#' @param state_lineages the lineages that makes the state network from the root state to leaf states
+#' @import castor
 FindExpTree <- function(states,labels,state_lineages,muts,newick_lookup,maxIter){
   #browser()
   for (i in 1:length(labels)){

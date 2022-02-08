@@ -168,6 +168,12 @@ Cal_LC_prob <- function(edges,cell_state_labels,state_shift_prob,state_lineages)
   return(LC_prob)
 }
 
+
+#' Propose a new tree using random Subtree Swapping (rSS)
+#'
+#' @param tree input tree
+#' @param prob_internal the probability to select an internal node
+#' @import TreeTools
 TreeLC2 <- function(tree,prob_internal = NULL){
 
   tree <- Preorder(tree)

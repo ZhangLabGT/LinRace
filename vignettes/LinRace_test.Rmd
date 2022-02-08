@@ -16,6 +16,8 @@ knitr::opts_chunk$set(
 
 ```{r setup}
 library(devtools)
+library(DCLEAR)
+library(phangorn)
 devtools::load_all("~/TedSim/TedSim_1.00/TedSim/")
 devtools::load_all()
 ```
@@ -28,7 +30,7 @@ devtools::load_all()
 # mutation rate mu: 0.05, 0.1, 0.2,0.4
 # 5 datasets each settings
 
-ncells <- 32
+ncells <- 1024
 #state tree 1
 #phyla <- read.tree(text='((t1:4, (t2:2, t3:2):2):2);')
 #state tree 2
@@ -1017,3 +1019,134 @@ for (i in 1:maxIter){
 
   best_tree <- A_0[which.max(Likelihood_df$cl)]
 ```
+
+```{r}
+ncells <- 32
+#state tree 1
+#phyla <- read.tree(text='((t1:4, (t2:2, t3:2):2):2);')
+#state tree 2
+phyla <- read.tree(text='((t1:4, t2:4, t3:4, t4:4, t5:4, t6:4):2);')
+#phyla <- read.tree(text='((t1:2, t2:2):1, (t3:2, t4:2):1):2;')
+N_nodes <- 2*ncells-2
+ngenes <- 500
+max_walk <- 8
+p_a <- 0.8
+n_cif <- 30
+n_diff <- 20
+cif_step <- 0.5
+#cif_step <- 0.2
+mu_list <- c(0.01,0.03,0.05)
+#mu <- 0.01
+seeds <- runif(10000,1,99999)
+
+p_d <- 0
+N_char <- 16
+#N_char <- 16
+#set.seed(1)
+
+df <- data.frame(mu = numeric(),run = numeric(),NJ = numeric(),NJ_asym = numeric())
+for(mu in mu_list){
+  for(i in 1:5){
+    set.seed(seeds[i])
+    seeds <- seeds[-i]
+    returnlist <- SIFGenerate(phyla,n_diff,step = cif_step)
+    cifs <- SimulateCIFs(ncells,phyla,p_a = p_a,n_CIF = n_cif,n_diff = n_diff,step = cif_step,p_d = p_d, Sigma = 0.5,mu = mu, N_char = N_char, max_walk = max_walk, SIF_res = returnlist, unif_on = FALSE)
+    
+    #We only need the leaf cells for experiments
+    cif_leaves <- lapply(c(1:3),function(parami){
+      cif_leaves_all <- cifs[[1]][[parami]][c(1:ncells),]
+      return(cif_leaves_all)
+    })
+    cif_res <- list(cif_leaves,cifs[[2]])
+    states <- cifs[[2]]
+    states <- states[1:N_nodes,]
+    states_leaves <- states[1:ncells,]
+    muts <- cifs[[7]]
+    rownames(muts) <- paste("cell",states[,4],sep = "_")
+    muts_leaves <- muts[1:ncells,]
+    
+    #randomize muts_leaves
+    muts_leaves <- muts[sample(nrow(muts_leaves)),]
+    
+    tree_ct <- cifs[[4]]
+    tip_label <- c()
+    for (node in tree_ct$tip.label){
+      tip <- paste('cell_',substr(node,2,nchar(node)),sep = '')
+      tip_label <- c(tip_label,tip)
+    }
+    tree_ct$tip.label <- tip_label
+    
+    #simulate true counts
+    true_counts_res <- CIF2Truecounts(ngenes = 500,ncif = n_cif,ge_prob = 0.3,ncells = ncells, cif_res = cif_res)
+    
+    state_counter <- 1
+    states_intermediate <- states_leaves[,'cluster']
+    for (cluster_id in sort(unique(states_leaves[,'cluster']))){
+      depth_range <- sort(unique(states_leaves[states_leaves[,'cluster']==cluster_id,'depth']))
+      state_inter <- state_counter:(state_counter + length(depth_range)-1)
+      state_counter <- state_counter + length(depth_range)
+      print(cluster_id)
+      print(state_inter)
+      for (i in 1:length(depth_range)){
+        states_intermediate[states_leaves[,'cluster']==cluster_id & states_leaves[,'depth'] == depth_range[i]]<- state_inter[i]
+      }
+    }
+    
+    mu_d1 = c( 30, 20, 10, 5, 5, 1, 0.01, 0.001)
+    mu_d1 = mu_d1/sum(mu_d1)
+    simn = 100 # number of cell samples
+    m = 200  ## number of targets
+    mu_d = 0.03 # mutation rate
+    d = 12 # number of cell division
+    p_d = 0.005 # dropout probability
+    
+    sim_tree <- list()
+    for (i in 1:dim(muts_leaves)[1]){
+      sim_tree[[i]] <- c(muts_leaves[i,])
+      #names(sim_tree[[i]]) <- rownames(muts_leaves)[i]
+    }
+    
+    names(sim_tree) <- rownames(muts_leaves)
+    #nmstrings <- c('0','-',c(1:100))
+    nmstrings <- unique(unlist(sim_tree))
+    sim_data <- phyDat(sim_tree,type = 'USER',levels = nmstrings)
+    
+    #dist_wh2 <- WH(sim_data, InfoW, dropout=TRUE)
+    dist_h <- dist.hamming(sim_data)
+    
+    Treenj = nj(dist_h)
+    TreeNJ_h <- multi2di(Treenj)
+    #TreeFM_wh2 = fastme.ols(dist_wh2)
+    TreeNJ_h$edge.length <- rep(1, length(TreeNJ_h$edge.length))
+    
+    state_lineages <- list()
+    for (i in 1:6){
+        lineage <- c(sort(unique(states_intermediate[states_leaves[,'cluster']==8])),sort(unique(states_intermediate[states_leaves[,'cluster']==i])))
+        state_lineages[[length(state_lineages)+1]] <- lineage
+    }
+    
+    #construct the state lineages for the new tree:::
+    cell_meta <- as.data.frame(states_leaves)
+    cell_meta$cluster_kmeans <- states_intermediate
+    muts_leaves <- MutsTransform(muts_leaves)
+    
+    tree <- NJ_asym(dist_h,muts_leaves,cell_meta$cluster_kmeans,state_lineages)
+    
+    temp <- data.frame(mu = mu,run = i,NJ = RF.dist(TreeNJ_h, tree_ct, normalize = TRUE),NJ_asym = RF.dist(tree, tree_ct, normalize = TRUE))
+    df <- rbind(df,temp)
+  }
+  
+}
+
+df_plot1 <- data.frame(mu = df$mu,run = df$run,method = "NJ",rf = df$NJ)
+df_plot2 <- data.frame(mu = df$mu,run = df$run,method = "NJ_asym",rf = df$NJ_asym)
+df_plot <- rbind(df_plot1,df_plot2)
+
+df_plot$mu_group <- as.factor(df_plot$mu)
+p <- ggplot(df_plot)
+p <- ggplot(df_plot, aes(x=mu_group, y=rf, fill=method)) + 
+    geom_boxplot()
+p
+
+```
+

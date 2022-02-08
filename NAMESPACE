@@ -2,4 +2,8 @@
 
 export(LikelihoodCal)
 export(LikelihoodCal2)
+export(NJ_asym)
+import(TreeTools)
 import(ape)
+import(castor)
+import(data.table)
