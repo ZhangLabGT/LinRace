@@ -42,10 +42,15 @@ update_dist <- function(X,index1,index2,labels,new_node_id){
   rownames(results) <- labels_new
   colnames(results) <- labels_new
 
-  results <- results[-c(index1+1,index2+1),]
-  results <- results[,-c(index1+1,index2+1)]
-
-  return(as.dist(results))
+  results <- tryCatch({
+    results <- results[-c(index1+1,index2+1),]
+    results <- results[,-c(index1+1,index2+1)]
+    return(as.dist(results))
+  }, error = function(e) {
+    print(paste("Only one node left."))
+    newick <- labels_new[1]
+    return(newick)
+  })
 }
 
 update_dist_multi <- function(X,index_list,labels,new_node_id){
@@ -175,7 +180,7 @@ NJ_asym <- function(X,muts,states,state_lineages){
   node_definition <- NULL
 
   newick_lookup <- data.frame(newick = character(),index = numeric())
-  while(N > 2){
+  while(N > 3){
     r <- Diver_cal(X,N)
     Q <- compute_Q(X,r,N)
     Q_min <- which(Q == min(Q))
@@ -198,12 +203,21 @@ NJ_asym <- function(X,muts,states,state_lineages){
 	      break
 	    }
 	  }
-
+	  #browser()
 	  if(length(coord_merge)>2){
 	    states_merge <- states[coord_merge]
 	    #consider barcode when all barcodes are different
 	    tree_recon <- FindExpTree(states,labels = labels[coord_merge],state_lineages,muts,newick_lookup,maxIter = 200)
-	    node_definition <- tree_recon[[1]]
+	    best_tree <- tree_recon[[1]]
+
+	    node_definition <- write_tree(best_tree,quoting = 0)
+	    if (length(coord_merge)==N){
+	      print("All nodes are merged.")
+	      tree_nj <- read.tree(text = node_definition)
+	      return(tree_nj)
+	    }
+
+
 	    n <- nchar(node_definition)
 	    if(substr(node_definition, n, n) == ';'){
 	      node_definition <- substr(node_definition,1,n-1)
@@ -217,20 +231,89 @@ NJ_asym <- function(X,muts,states,state_lineages){
 	    newick_lookup <- rbind(newick_lookup,temp)
 
 	    #browser()
-	    X <- update_dist_multi(X,coord_merge,labels,node_definition)
+	    nodes_internal <- unique(best_tree$edge[,1])
+	    #order the internal nodes
+	    nodes_internal <- sort(nodes_internal, decreasing = TRUE)
 
-	    if (is.character(X)){
-	      #browser()
-	      print(X)
-	      if(substr(X,nchar(X),nchar(X))!=";"){
-	        X <- paste(X,";",sep = "")
+	    node_newick_df <- data.frame(newick = character(),tree_index = numeric())
+	    for(node in nodes_internal){
+	      children_index <- best_tree$edge[best_tree$edge[,1] == node,2]
+	      coord_merge <- c()
+	      for (cell_id in children_index){
+	        if (cell_id > length(best_tree$tip.label)){
+	          node_name <- node_newick_df$newick[node_newick_df$tree_index==cell_id]
+	          node_index <- which(labels==node_name)
+	        }else {
+	          node_name <- best_tree$tip.label[cell_id]
+	          node_index <- which(labels==node_name)
+	        }
+	        coord_merge <- c(coord_merge, node_index)
 	      }
-	      tree_nj <- read.tree(text = X)
-	      return(tree_nj)
-	    }else{
-	      N <- as.integer(attr(X, "Size"))
-	      labels <- attr(X, "Labels")
-	    }
+
+	      merge_member_1 <- coord_merge[1]
+	      merge_member_2 <- coord_merge[2]
+
+	      index <- distdex(merge_member_1,merge_member_2,N)
+	      if(N >2){
+	        dist_merged_1 <- X[index]/2 - (r[merge_member_1] - r[merge_member_2])/(2*(N-2))
+	      }else{
+	        dist_merged_1 <- X[index]/2
+	      }
+
+	      if (dist_merged_1 < 0){
+	        dist_merged_1 <- 0
+	      } else if (dist_merged_1 > X[index]){
+	        dist_merged_1 <- X[index]
+	      }
+	      dist_merged_2 <- X[index] - dist_merged_1
+
+	      for (i in coord_merge){
+	        label <- labels[i]
+	        n <- nchar(label)
+	        if(substr(label, n, n) == ';'){
+	          labels[i] <- substr(label,1,n-1)
+	        }
+	      }
+
+	      node_definition <- sprintf('(%s:%f, %s:%f)',
+	                                 labels[merge_member_1], dist_merged_1,labels[merge_member_2], dist_merged_2)
+
+	      X <- update_dist(X,coord_merge[1],coord_merge[2],labels,node_definition)
+	      #N <- as.integer(attr(X, "Size"))
+	      #labels <- attr(X, "Labels")
+
+	      if (is.character(X)){
+	        #browser()
+	        print(X)
+	        if(substr(X,nchar(X),nchar(X))!=";"){
+	          X <- paste(X,";",sep = "")
+	        }
+	        tree_nj <- read.tree(text = X)
+	        return(tree_nj)
+	      }else{
+	        N <- as.integer(attr(X, "Size"))
+	        labels <- attr(X, "Labels")
+	      }
+
+	      temp <- data.frame(newick = node_definition,tree_index = node)
+	      node_newick_df <- rbind(node_newick_df,temp)
+      }
+
+	    #X <- update_dist_multi(X,coord_merge,labels,node_definition)
+
+	    # if (is.character(X)){
+	    #   #browser()
+	    #   print(X)
+	    #   if(substr(X,nchar(X),nchar(X))!=";"){
+	    #     X <- paste(X,";",sep = "")
+	    #   }
+	    #   tree_nj <- read.tree(text = X)
+	    #   return(tree_nj)
+	    # }else{
+	    #   N <- as.integer(attr(X, "Size"))
+	    #   labels <- attr(X, "Labels")
+	    # }
+
 	  }else{
   	  merge_member_1 = coord_merge[1]
   	  merge_member_2 = coord_merge[2]
@@ -270,13 +353,23 @@ NJ_asym <- function(X,muts,states,state_lineages){
       labels[i] <- substr(label,1,n-1)
     }
   }
-  # ...and finally create the newick string describing the whole tree.
-  newick = sprintf("(%s:%f, %s:%f);",labels[1], 1,
-                   labels[2], 1)
-  #print(newick)
-  #browser()
-  # return the phylo object transformed from newick.
-  tree_nj <- read.tree(text = newick)
+
+  if(length(labels)==2){
+    # ...and finally create the newick string describing the whole tree.
+    newick = sprintf("(%s:%f, %s:%f);",labels[1], 1,
+                     labels[2], 1)
+    #print(newick)
+    #browser()
+    # return the phylo object transformed from newick.
+    tree_nj <- read.tree(text = newick)
+  }else{
+    newick = sprintf("(%s:%f, %s:%f, %s:%f);",labels[1], 1,
+                     labels[2], 1, labels[3], 1)
+    #print(newick)
+    #browser()
+    # return the phylo object transformed from newick.
+    tree_nj <- read.tree(text = newick)
+  }
   return(tree_nj)
 }
 
@@ -354,7 +447,7 @@ FindExpTree <- function(states,labels,state_lineages,muts,newick_lookup,maxIter)
 	root_barcode <- ances_res[[1]][dim(ances_res[[1]])[1],]
 	root_state_label <- ances_res[[2]][length(ances_res[[2]])]
 
-	return(list(write_tree(best_tree,quoting = 0),root_state_label,root_barcode))
+	return(list(best_tree,root_state_label,root_barcode))
 }
 
 
