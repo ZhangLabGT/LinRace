@@ -3,6 +3,7 @@
 export(LikelihoodCal)
 export(LikelihoodCal2)
 export(NJ_asym)
+export(NJ_asym_alter)
 import(TreeTools)
 import(ape)
 import(castor)

@@ -31,6 +31,15 @@ DivideMut <- function(X){
   return(list(tree_backbone,dt))
 }
 
+#' LinRace main function(alter): asymmetric division based Neighbor Joining
+#'
+#' @param muts lineage barcode matrix
+#' @param states cell states of single cells
+#' @param state_lineages the lineages that makes the state network from the root state to leaf states
+#' @param max_Iter the maximum iterations for local search
+#' @import data.table
+#' @import phangorn
+#' @export
 NJ_asym_alter <- function(muts,states,state_lineages,max_Iter = 200){
   labels <- rownames(muts)
   returnList <- DivideMut(muts)
