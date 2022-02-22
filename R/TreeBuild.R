@@ -165,6 +165,7 @@ NJ <- function(X){
 #' @param states cell states of single cells
 #' @param state_lineages the lineages that makes the state network from the root state to leaf states
 #' @import data.table
+#' @import phangorn
 #' @export
 NJ_asym <- function(X,muts,states,state_lineages){
   if (is.matrix(X)) X <- as.dist(X)
@@ -492,7 +493,7 @@ ConstructTree <- function(tree_backbone,subtrees){
   tree <- tree_backbone
   for (subtree in subtrees){
     bind_tip <- subtree$name
-    tree <- bind.tree(tree, subtree, where = which(tree_backbone$tip.label==bind_tip))
+    tree <- bind.tree(tree, subtree, where = which(tree$tip.label==bind_tip))
   }
   return(tree)
 }

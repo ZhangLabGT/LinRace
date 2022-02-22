@@ -1035,15 +1035,19 @@ n_cif <- 30
 n_diff <- 20
 cif_step <- 0.5
 #cif_step <- 0.2
-ncells_list <- c(64,256,1024)
-mu_list <- c(0.01,0.03,0.05)
+ncells_list <- c(1024,2048)
+mu_list <- c(0.025,0.05,0.075)
 #mu <- 0.01
 seeds <- runif(10000,1,99999)
 
-p_d <- 0
+p_d <- 1
 N_char <- 16
 #N_char <- 16
 #set.seed(1)
+
+ptm <- proc.time()
+LikelihoodCal_time <- 0
+TreeLC_time <- 0
 
 df <- data.frame(mu = numeric(),run = numeric(),NJ = numeric(),NJ_asym = numeric())
 for(ncells in ncells_list){
@@ -1082,7 +1086,7 @@ for(ncells in ncells_list){
       muts_leaves <- muts[1:ncells,]
       
       #randomize muts_leaves
-      muts_leaves <- muts[sample(nrow(muts_leaves)),]
+      muts_leaves <- muts_leaves[sample(nrow(muts_leaves)),]
       
       tree_ct <- cifs[[4]]
       tip_label <- c()
@@ -1117,8 +1121,8 @@ for(ncells in ncells_list){
       p_d = 0.005 # dropout probability
       
       sim_tree <- list()
-      for (i in 1:dim(muts_leaves)[1]){
-        sim_tree[[i]] <- c(muts_leaves[i,])
+      for (j in 1:dim(muts_leaves)[1]){
+        sim_tree[[j]] <- c(muts_leaves[j,])
         #names(sim_tree[[i]]) <- rownames(muts_leaves)[i]
       }
       
@@ -1190,10 +1194,15 @@ for(ncells in ncells_list){
       rank_gene <- data.frame(name = colnames(counts_t), var = var_gene)
       rank_gene <- rank_gene[order(-rank_gene$var),]
       colnames(rank_gene)<- c()
+      
+      character_matrix_dir <- sprintf("~/LinRace-temp/datasets/LinRace_compare/cm_tedsim_mu%g_p_d%g_%g_%g.txt", 
+                               mu, p_d, ncells,i)
+          
       counts_dir <- sprintf("~/LinRace-temp/datasets/LinRace_compare/counts_barcoded_tedsim_mu%g_p_d%g_%g_%g.txt", 
                            mu, p_d,ncells, i)
       meta_dir <- sprintf("~/LinRace-temp/datasets/LinRace_compare/Top_genes_tedsim_mu%g_p_d%g_%g_%g.txt", 
                          mu, p_d,ncells,  i)
+      write.table(muts_leaves,character_matrix_dir,sep = "\t", quote = FALSE)
       write.table(profiles_out,file = counts_dir,row.names = FALSE,sep = "\t", quote = FALSE)
       write.table(subset(rank_gene,select = 1),file = meta_dir,row.names = FALSE,sep = "\t", quote = FALSE)
     }
@@ -1205,17 +1214,30 @@ df_plot2 <- data.frame(mu = df$mu,run = df$run,method = "NJ_asym",rf = df$NJ_asy
 df_plot <- rbind(df_plot1,df_plot2)
 
 df_plot$mu_group <- as.factor(df_plot$mu)
-df_plot$ncells <- c(rep(64,15),rep(256,15),rep(1024,10))
+#df_plot$ncells <- c(rep(64,15),rep(256,15),rep(1024,15))
+df_plot$ncells <- df_plot$run
 df_plot$ncells_group <- as.factor(df_plot$ncells)
 
-
-p <- ggplot(df_plot[df_plot$ncells == 64,], aes(x=mu_group, y=rf, fill=method)) + 
+for (ncells in ncells_list){
+  p <- ggplot(df_plot[df_plot$ncells == ncells,], aes(x=mu_group, y=rf, fill=method)) + 
     geom_boxplot()
+  p <- p + theme(axis.text = element_text(size = 20), axis.title = element_text(size = 30),legend.title = element_text(size = 15),legend.text = element_text(size = 20))
+  plt_dir <- sprintf("~/LinRace-temp/plots/box_compare_ncells%g.png",ncells)
+  ggsave(plt_dir,plot = p)
+
+}
+
+for (mu in mu_list){
+  p <- ggplot(df_plot[df_plot$mu == mu,], aes(x=ncells_group, y=rf, fill=method)) + 
+    geom_boxplot()
+  p <- p + theme(axis.text = element_text(size = 20), axis.title = element_text(size = 30),legend.title = element_text(size = 15),legend.text = element_text(size = 20))
+  plt_dir <- sprintf("~/LinRace-temp/plots/box_compare_mu%g.png",mu)
+  ggsave(plt_dir,plot = p)
+
+}
+
 p + theme(axis.text = element_text(size = 20), axis.title = element_text(size = 30),legend.title = element_text(size = 15),legend.text = element_text(size = 20))
 
-p <- ggplot(df_plot[df_plot$mu == 0.05,], aes(x=ncells_group, y=rf, fill=method)) + 
-    geom_boxplot()
-p + theme(axis.text = element_text(size = 20), axis.title = element_text(size = 30),legend.title = element_text(size = 15),legend.text = element_text(size = 20))
 
 ```
 
