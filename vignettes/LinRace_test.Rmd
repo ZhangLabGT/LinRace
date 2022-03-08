@@ -1021,7 +1021,7 @@ for (i in 1:maxIter){
 ```
 
 ```{r}
-ncells <- 1024
+ncells <- 16
 #state tree 1
 #phyla <- read.tree(text='((t1:4, (t2:2, t3:2):2):2);')
 #state tree 2
@@ -1111,6 +1111,17 @@ for(ncells in ncells_list){
           states_intermediate[states_leaves[,'cluster']==cluster_id & states_leaves[,'depth'] == depth_range[i]]<- state_inter[i]
         }
       }
+      
+      state_lineages <- list()
+      for (j in 1:6){
+          lineage <- c(sort(unique(states_intermediate[states_leaves[,'cluster']==8])),sort(unique(states_intermediate[states_leaves[,'cluster']==j])))
+          state_lineages[[length(state_lineages)+1]] <- lineage
+      }
+       #construct the state lineages for the new tree:::
+      cell_meta <- as.data.frame(states_leaves)
+      cell_meta$cluster_kmeans <- states_intermediate
+      muts_leaves <- MutsTransform(muts_leaves)
+
       
       mu_d1 = c( 30, 20, 10, 5, 5, 1, 0.01, 0.001)
       mu_d1 = mu_d1/sum(mu_d1)

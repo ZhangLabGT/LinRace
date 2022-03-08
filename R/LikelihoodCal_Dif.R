@@ -1,4 +1,19 @@
-LikelihoodCal_Exp <- function(tree,cell_state_labels,state_lineages,newick_lookup){
+#' Calculate expression likelihood with diffusion loss
+#'
+#' This function computes the expression likelihood of a tree based on cell gene expression data
+#' @param tree input tree
+#' @param counts gene expression data
+#' @param cell_state_labels cell states of single cells
+#' @param state_lineages the lineages that makes the state network from the root state to leaf states
+#' @param newick_lookup lookup table for internal nodes
+#' @import ape
+#' @import destiny
+#' @export
+LikelihoodCal_Dif <- function(tree,counts,cell_state_labels,newick_lookup){
+
+  dm <- DiffusionMap(data=log2(counts+1),n_pcs = min(30,nrow(counts)))
+  prob_t <- dm@transitions
+
   #browser()
   #Get the internal node ids
   nodes_internal <- unique(tree$edge[,1])
@@ -16,13 +31,16 @@ LikelihoodCal_Exp <- function(tree,cell_state_labels,state_lineages,newick_looku
   total_dist <- 0
 
   #determine ancestor barcode based on child barcodes
+  diffuse_loss <- 0
   for (node in nodes_internal){
     children_index <- tree$edge[tree$edge[,1] == node,2]
     children <- c()
+    leaf_counts <- 0
     for (cell_id in children_index){
       if (cell_id > length(tree$tip.label)){
         cell_row <- internal_lookup$index[internal_lookup$node == cell_id]
       }else {
+        leaf_counts <- leaf_counts + 1
         cell_id <- tree$tip.label[cell_id]
         if(substr(cell_id,1,1)=="c"){
           cell_row <- strtoi(substr(cell_id,6,nchar(cell_id)))
@@ -51,6 +69,9 @@ LikelihoodCal_Exp <- function(tree,cell_state_labels,state_lineages,newick_looku
     temp <- data.frame(node = node,index = length(cell_state_labels))
     internal_lookup <- rbind(internal_lookup,temp)
 
+    if((cell_state_children[1] == cell_state_children[2])&(leaf_counts == 2)){
+      diffuse_loss <- diffuse_loss + log2(prob_t[children[1]],prob_t[children[2]])
+    }
 
     if (cell_state_labels[length(cell_state_labels)] == "0"){
       N_violations <- N_violations + 2
@@ -60,6 +81,3 @@ LikelihoodCal_Exp <- function(tree,cell_state_labels,state_lineages,newick_looku
   l_expression <- sum(state_transitions$freq * log2(state_transitions$freq/sum(state_transitions$freq))) - N_violations*50
   return(l_expression)
 }
-
-
-

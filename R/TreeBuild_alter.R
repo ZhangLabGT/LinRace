@@ -54,7 +54,7 @@ NJ_asym_alter <- function(muts,states,state_lineages,max_Iter = 200){
     states_sub <- states[cellids]
     labels_sub <- labels[cellids]
 
-    res <- FindExpTree(states_sub,labels = labels_sub,state_lineages,muts,maxIter = max_Iter)
+      res <- FindExpTree(states_sub,labels = labels_sub,state_lineages,muts,maxIter = max_Iter)
     subtree_opt <- res[[1]]
     subtree_opt$name <- as.character(i)
     subtree_list[[length(subtree_list)+1]] <- subtree_opt

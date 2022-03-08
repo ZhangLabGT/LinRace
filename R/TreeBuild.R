@@ -208,6 +208,7 @@ NJ_asym <- function(X,muts,states,state_lineages){
 	  if(length(coord_merge)>2){
 	    states_merge <- states[coord_merge]
 	    #consider barcode when all barcodes are different
+
 	    tree_recon <- FindExpTree(states,labels = labels[coord_merge],state_lineages,muts,newick_lookup,maxIter = 200)
 	    best_tree <- tree_recon[[1]]
 

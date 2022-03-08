@@ -2,10 +2,12 @@
 
 export(LikelihoodCal)
 export(LikelihoodCal2)
+export(LikelihoodCal_Dif)
 export(NJ_asym)
 export(NJ_asym_alter)
 import(TreeTools)
 import(ape)
 import(castor)
 import(data.table)
+import(destiny)
 import(phangorn)

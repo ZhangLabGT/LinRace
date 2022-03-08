@@ -23,6 +23,7 @@ Imports:
   dyno,
   slingshot,
   TreeTools,
-  castor
+  castor,
+  destiny
 Depends:
   R(>= 3.5.0)
