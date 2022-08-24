@@ -454,17 +454,17 @@ FindExpTree <- function(states,labels,state_lineages,muts,newick_lookup,maxIter)
 
 
 
-DivideTree <- function(tree, depth_split){
-  tree <- Preorder(tree)
-  tree$edge.length <- rep(1,length(tree$edge.length))
+#DivideTree <- function(tree, depth_split){
+#  tree <- Preorder(tree)
+#  tree$edge.length <- rep(1,length(tree$edge.length))
   #bound_l <- floor(log2(N_split))
   #bound_h <- ceiling(log2(N_split))
 
-  node_depth <- get_all_distances_to_root(tree)
-  leaf_depth_min <- min(node_depth[1:length(tree$tip.label)])
-  if (depth_split >= leaf_depth_min){
-    stop("The dividing depth is below the depth of certain leaves.")
-  }
+#  node_depth <- get_all_distances_to_root(tree)
+#  leaf_depth_min <- min(node_depth[1:length(tree$tip.label)])
+#  if (depth_split >= leaf_depth_min){
+#    stop("The dividing depth is below the depth of certain leaves.")
+#  }
   #depth_df <- data.frame(depth = numeric(),N_node = numeric())
   #for (depth in sort(unique(node_depth))){
   #  node_depth_list <- which(node_depth == depth)
@@ -472,28 +472,30 @@ DivideTree <- function(tree, depth_split){
   #  temp <- data.frame(depth = depth, N_node = N_node)
   #  depth_df <- rbind(depth_df,temp)
   #}
-  node_split_list <- which(node_depth == depth_split)
+#  node_split_list <- which(node_depth == depth_split)
 
-  subtree_list <- list()
-  tree_backbone  <- tree
-  N_node_dropped <- 0
-  for (node_split in sort(node_split_list,decreasing=TRUE)){
-    subtree <- Subtree(tree,node_split)
-    subtree$root.edge <- 1
-    subtree$name <- paste("subtree",toString(node_split))
-    subtree$edge.length <- rep(1, nrow(subtree$edge))
-    subtree_list[[length(subtree_list)+1]] <- subtree
-    tree_backbone <- bind.tip(tree_backbone, paste("subtree",toString(node_split)), where=node_split-N_node_dropped,edge.length = 1)
-    tree_backbone <- drop.tip(tree_backbone,tip = subtree$tip.label, root.edge = 1)
-    N_node_dropped <- N_node_dropped + length(subtree$tip.label)-1
-  }
-  return(list(tree_backbone,subtree_list))
-}
+#  subtree_list <- list()
+#  tree_backbone  <- tree
+#  N_node_dropped <- 0
+#  for (node_split in sort(node_split_list,decreasing=TRUE)){
+#    subtree <- Subtree(tree,node_split)
+#    subtree$root.edge <- 1
+#    subtree$name <- paste("subtree",toString(node_split))
+#    subtree$edge.length <- rep(1, nrow(subtree$edge))
+#    subtree_list[[length(subtree_list)+1]] <- subtree
+#    tree_backbone <- bind.tip(tree_backbone, paste("subtree",toString(node_split)), where=node_split-N_node_dropped,edge.length = 1)
+#    tree_backbone <- drop.tip(tree_backbone,tip = subtree$tip.label, root.edge = 1)
+#    N_node_dropped <- N_node_dropped + length(subtree$tip.label)-1
+#  }
+#  return(list(tree_backbone,subtree_list))
+#}
 
 ConstructTree <- function(tree_backbone,subtrees){
   tree <- tree_backbone
+  #print(tree_backbone$tip.label)
   for (subtree in subtrees){
     bind_tip <- subtree$name
+    #print(bind_tip)
     tree <- bind.tree(tree, subtree, where = which(tree$tip.label==bind_tip))
   }
   return(tree)

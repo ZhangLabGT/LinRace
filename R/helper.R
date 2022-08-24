@@ -15,15 +15,15 @@ MutsTransform <- function(muts){
           start_reg <- j
         }
         if (barcode[j]!='-' & barcode[j-1] == '-'){
-          if (nrow(merge(data.frame(start = start_reg, end = j),interval_df)) == 0){
-            temp_df <- data.frame(start = start_reg,end = j)
+          if (nrow(merge(data.frame(start = start_reg, end = j-1),interval_df)) == 0){
+            temp_df <- data.frame(start = start_reg,end = j-1)
             interval_df <- rbind(interval_df,temp_df)
-            muts[i,start_reg:j] <- dropout_num[k]
+            muts[i,start_reg:(j-1)] <- dropout_num[k]
             k <- k + 1
           }
           else{
-            index <- which(interval_df$start == start_reg & interval_df$end == j)[1]
-            muts[i,start_reg:j] <- dropout_num[index]
+            index <- which(interval_df$start == start_reg & interval_df$end == j-1)[1]
+            muts[i,start_reg:(j-1)] <- dropout_num[index]
           }
         }
       } else if (j == 1){

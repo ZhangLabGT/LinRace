@@ -2,18 +2,14 @@
 #'
 #' This function computes the expression likelihood of a tree based on cell gene expression data
 #' @param tree input tree
-#' @param counts gene expression data
+#' @param prob_t transition probabilities between cells
 #' @param cell_state_labels cell states of single cells
 #' @param state_lineages the lineages that makes the state network from the root state to leaf states
 #' @param newick_lookup lookup table for internal nodes
 #' @import ape
 #' @import destiny
 #' @export
-LikelihoodCal_Dif <- function(tree,counts,cell_state_labels,newick_lookup){
-
-  dm <- DiffusionMap(data=log2(counts+1),n_pcs = min(30,nrow(counts)))
-  prob_t <- dm@transitions
-
+LikelihoodCal_Dif <- function(tree,prob_t,cell_state_labels,state_lineages,newick_lookup){
   #browser()
   #Get the internal node ids
   nodes_internal <- unique(tree$edge[,1])
@@ -32,6 +28,8 @@ LikelihoodCal_Dif <- function(tree,counts,cell_state_labels,newick_lookup){
 
   #determine ancestor barcode based on child barcodes
   diffuse_loss <- 0
+  ad_loss <- 0
+  p_a <- 0.8
   for (node in nodes_internal){
     children_index <- tree$edge[tree$edge[,1] == node,2]
     children <- c()
@@ -69,8 +67,16 @@ LikelihoodCal_Dif <- function(tree,counts,cell_state_labels,newick_lookup){
     temp <- data.frame(node = node,index = length(cell_state_labels))
     internal_lookup <- rbind(internal_lookup,temp)
 
+    #print(children)
+    #print(leaf_counts)
     if((cell_state_children[1] == cell_state_children[2])&(leaf_counts == 2)){
-      diffuse_loss <- diffuse_loss + log2(prob_t[children[1]],prob_t[children[2]])
+      diffuse_loss <- diffuse_loss + log2(prob_t[children[1],children[2]])
+    }
+
+    if(cell_state_children[1] == cell_state_children[2]){
+      ad_loss <- ad_loss + log2(1-p_a)
+    } else {
+      ad_loss <- ad_loss + log2(p_a)
     }
 
     if (cell_state_labels[length(cell_state_labels)] == "0"){
@@ -78,6 +84,14 @@ LikelihoodCal_Dif <- function(tree,counts,cell_state_labels,newick_lookup){
     }
   }
   state_transitions <- state_transitions[state_transitions$freq > 0,]
-  l_expression <- sum(state_transitions$freq * log2(state_transitions$freq/sum(state_transitions$freq))) - N_violations*50
+  max_step <- length(state_transitions$freq)
+  if (max_step > 0){
+    transit_prob <- exp(-1:-max_step)/sum(exp(-1:-max_step))
+    l_expression <- sum(state_transitions$freq * transit_prob) - N_violations*50 + 10 * ad_loss
+  }else {
+    l_expression <- - N_violations*50 + 10 * ad_loss 
+  }
+  #l_expression <- sum(state_transitions$freq * log2(state_transitions$freq/sum(state_transitions$freq))) - N_violations*50 + diffuse_loss
   return(l_expression)
+  
 }
