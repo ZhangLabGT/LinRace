@@ -24,7 +24,7 @@ DivideMut_Cas <- function(X){
   prob_table <- prob_table/sum(prob_table)
   prob_table <- log2(prob_table)
 
-  
+
   l <- dim(X_unique)[1]
   rownames(X_unique) <- 1:l
 
@@ -38,13 +38,16 @@ DivideMut_Cas <- function(X){
 Cas_greedy <- function(X,prob_table){
   if (nrow(X) == 1){return(rownames(X))}
   #if (nrow(X) == 1){return(paste(X, collapse = '|'))}
-  freq_table <- apply(X, 2, table)
+  freq_table <- plyr::alply(X, 2, table)
   min_loss <- 0
   min_target <- 0
   min_mut <- '0'
 
   for (i in 1:length(freq_table)){
     freq_table_target <- freq_table[[i]]
+    #if (length(rownames(freq_table_target)) < 1){
+    #  browser()
+    #}
     rownames(freq_table_target) <- gsub(" ","",rownames(freq_table_target))
     freq_table_target <- freq_table_target[rownames(freq_table_target)!="-"]
 

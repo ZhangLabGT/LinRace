@@ -1,3 +1,10 @@
+#' Finding merging pairs based on barcodes
+#'
+#' @param tree_backbone neighbor joining tree based on unique barcodes
+#' @param dt cellid lookup table
+#'
+#' @import phangorn
+#' @import dplyr
 FindPairs <- function(tree_backbone,dt){
   edges_backbone <- as.data.frame(tree_backbone$edge)
   colnames(edges_backbone) <- c("ances","desc")
@@ -6,7 +13,7 @@ FindPairs <- function(tree_backbone,dt){
 
   df <- data.frame(parent = numeric(),left = numeric(),right = numeric(),desc_side = character(),asc_side = character())
   for(branch in edges_backbone_groups){
-    branch %>% arrange(desc)
+    branch %>% dplyr::arrange(desc)
     barcode_left <- dt$barcode[branch$desc[1]]
     barcode_right <- dt$barcode[branch$desc[2]]
 
@@ -25,9 +32,9 @@ FindPairs <- function(tree_backbone,dt){
     left_diff_bucket[left_diff_bucket != 0] <- 1
     right_diff_bucket[right_diff_bucket != 0] <- 1
     if (all(left_diff_bucket > right_diff_bucket)){
-      df <- df %>% add_row(parent = branch$ances[1],left = branch$desc[1],right = branch$desc[2],desc_side = "left",asc_side = "right")
+      df <- df %>% dplyr::add_row(parent = branch$ances[1],left = branch$desc[1],right = branch$desc[2],desc_side = "left",asc_side = "right")
     } else if (all(left_diff_bucket < right_diff_bucket)){
-      df <- df %>% add_row(parent = branch$ances[1],left = branch$desc[1],right = branch$desc[2],desc_side = "right",asc_side = "left")
+      df <- df %>% dplyr::add_row(parent = branch$ances[1],left = branch$desc[1],right = branch$desc[2],desc_side = "right",asc_side = "left")
     }
   }
 
@@ -55,7 +62,14 @@ PostSearch <- function(tree_backbone,df_pairs,subtree_list,counts,states,state_l
   }
 }
 
-
+#' Finding merging pairs based on barcodes
+#'
+#' @param tree_backbone neighbor joining tree based on unique barcodes
+#' @param df_pairs pairs found to be merged
+#' @param dt cellid lookup table
+#'
+#' @import phangorn
+#' @import dplyr
 MergeDT <- function(tree_backbone,df_pairs,dt){
   dt_merge <- dt
   dt_merge$merged <- FALSE
@@ -65,7 +79,7 @@ MergeDT <- function(tree_backbone,df_pairs,dt){
     dt_child <- dt[df_pairs[[df_pairs$desc_side[i]]][i],]
     dt_parent <- dt[df_pairs[[df_pairs$asc_side[i]]][i],]
 
-    dt_merge <- dt_merge%>% add_row(barcode = dt_parent$barcode,cellids = list(c(dt_parent$cellids[[1]],dt_child$cellids[[1]])),merged = FALSE)
+    dt_merge <- dt_merge%>% dplyr::add_row(barcode = dt_parent$barcode,cellids = list(c(dt_parent$cellids[[1]],dt_child$cellids[[1]])),merged = FALSE)
     dt_merge$merged[c(df_pairs$left[i],df_pairs$right[i])] <- TRUE
 
     tree <- tree %>% phytools::bind.tip(as.character(nrow(dt_merge)),where = df_pairs$parent[i] + i - 1,edge.length = 1)

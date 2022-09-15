@@ -104,6 +104,7 @@ NJ_asym_Dif <- function(muts,states,counts,state_lineages,max_Iter = 200){
 
   tree_backbone <- returnList[[1]]
   dt <- returnList[[2]]
+  dt$merged <- FALSE
 
   subtree_list <- list()
 
@@ -117,7 +118,6 @@ NJ_asym_Dif <- function(muts,states,counts,state_lineages,max_Iter = 200){
   tree_backbone <- res[[1]]
   dt <- res[[2]]
 
-
   for (i in 1:nrow(dt)){
     if (!dt$merged[i]){
       cellids <- unlist(dt$cellids[i])
@@ -127,7 +127,9 @@ NJ_asym_Dif <- function(muts,states,counts,state_lineages,max_Iter = 200){
       labels_sub <- labels[cellids]
 
       if (length(labels_sub)>1){
+        #res <- FindExpTree_Dif(states,labels = labels_sub,state_lineages,muts,prob_t,maxIter = max_Iter)
         res <- FindExpTree_Dif_Newick(states,labels = labels_sub,state_lineages,muts,prob_t,maxIter = max_Iter)
+
         subtree_opt <- res[[1]]
         subtree_opt$name <- as.character(i)
         #names_subtree <- c(names_subtree,as.character(i))
@@ -141,6 +143,7 @@ NJ_asym_Dif <- function(muts,states,counts,state_lineages,max_Iter = 200){
 
   tree_final <- ConstructTree(tree_backbone,subtree_list)
 }
+
 
 #' Finding the best tree structure based on local search
 #'
@@ -183,7 +186,7 @@ FindExpTree_Dif <- function(states,labels,state_lineages,muts,prob_f,newick_look
   tree$edge.length <- rep(1, length(tree$edge.length))
   edges <- tree$edge
   #maxcl <- LikelihoodCal(tree,muts_leaves,cell_meta$cluster_kmeans,state_lineages)
-  max_likelihood <- LikelihoodCal_Dif(tree,prob_f,states,state_lineages,newick_lookup)
+  max_likelihood <- LikelihoodCal_Dif(tree,muts,prob_f,states,state_lineages,newick_lookup)
 
   likelihood_curve <-c()
   seeds <- runif(10000,1,99999)
@@ -201,7 +204,7 @@ FindExpTree_Dif <- function(states,labels,state_lineages,muts,prob_f,newick_look
     TreeLC_time <- TreeLC_time + proc.time()-c_time
     #cl <- LikelihoodCal(tree_new,muts_leaves,cell_meta$cluster_kmeans,state_lineages)
     c_time <- proc.time()
-    likelihood_new <- LikelihoodCal_Dif(tree_new,prob_f,states,state_lineages,newick_lookup)
+    likelihood_new <- LikelihoodCal_Dif(tree_new,muts,prob_f,states,state_lineages,newick_lookup)
     #cl_list <- LikelihoodCal2(tree_new,muts_leaves,cell_meta$cluster_kmeans,state_lineages)
     LikelihoodCal_time <- LikelihoodCal_time + proc.time()-c_time
     likelihood_curve <- c(likelihood_curve,max_likelihood)
@@ -222,10 +225,10 @@ FindExpTree_Dif <- function(states,labels,state_lineages,muts,prob_f,newick_look
         maxl_list <- c(maxl_list,max_likelihood)
 
         tree <- tree_init
-        #tree <- rtree(length(labels), rooted = TRUE, tip.label = labels)
+	#tree <- rtree(length(labels), rooted = TRUE, tip.label = labels)
         tree$edge.length <- rep(1, length(tree$edge.length))
         #maxcl <- LikelihoodCal(tree,muts_leaves,cell_meta$cluster_kmeans,state_lineages)
-        max_likelihood <- LikelihoodCal_Dif(tree,prob_f,states,state_lineages,newick_lookup)
+        max_likelihood <- LikelihoodCal_Dif(tree,muts,prob_f,states,state_lineages,newick_lookup)
       }
     }
   }
@@ -244,7 +247,17 @@ FindExpTree_Dif <- function(states,labels,state_lineages,muts,prob_f,newick_look
 }
 
 
-FindExpTree_Dif_Newick <- function(states,labels,state_lineages,muts,prob_f,newick_lookup = NULL, maxIter = 200){
+#' Finding the best tree structure based on local search/ Fast Newick implementation
+#'
+#' @param states the states of the gene expressions of cells
+#' @param labels the labels of cells
+#' @param state_lineages the lineages that makes the state network from the root state to leaf states
+#' @param muts lineage barcode data of cells
+#' @param prob_f transition probabilities between cells
+#' @param newick_lookup lookup table for internal nodes
+#' @param maxIter maximum number of iterations of local search
+#' @import castor
+FindExpTree_Dif_Newick <- function(states,labels,state_lineages,muts,prob_f,newick_lookup = NULL, maxIter = 500){
   #browser()
   leafs <- c()
   for (i in 1:length(labels)){
@@ -257,7 +270,7 @@ FindExpTree_Dif_Newick <- function(states,labels,state_lineages,muts,prob_f,newi
     }
   }
   N <- length(unique(states[leafs]))
-  maxIter <- min(c(3 * N * N, 1000))
+  maxIter <- min(c(3 * N * N, maxIter))
   sliding <- min(100, N * N)
 
   if (length(labels)>2){
@@ -278,7 +291,7 @@ FindExpTree_Dif_Newick <- function(states,labels,state_lineages,muts,prob_f,newi
   tree$edge.length <- rep(1, length(tree$edge.length))
   edges <- tree$edge
   #maxcl <- LikelihoodCal(tree,muts_leaves,cell_meta$cluster_kmeans,state_lineages)
-  max_likelihood <- LikelihoodCal_Dif(tree,prob_f,states,state_lineages,newick_lookup)
+  max_likelihood <- LikelihoodCal_Dif(tree,muts,prob_f,states,state_lineages,newick_lookup)
 
   likelihood_curve <-c()
   seeds <- runif(10000,1,99999)
@@ -295,6 +308,7 @@ FindExpTree_Dif_Newick <- function(states,labels,state_lineages,muts,prob_f,newi
   num_leaves <- length(tree$tip.label)
   # print("starting iterations")
 
+  #print(maxIter)
   for (i in 1:maxIter){
     c_time <- proc.time()
 
@@ -307,7 +321,7 @@ FindExpTree_Dif_Newick <- function(states,labels,state_lineages,muts,prob_f,newi
 
     #likelihood_new <- LikelihoodCal_Dif(tree_new,prob_f,states,state_lineages,newick_lookup)
     # do likelihood calculation with new newick tree
-    likelihood_new <- LikelihoodCal_Dif(ape::read.tree(text=tree_new_newick),prob_f,states,state_lineages,newick_lookup)
+    likelihood_new <- LikelihoodCal_Dif(ape::read.tree(text=tree_new_newick),muts,prob_f,states,state_lineages,newick_lookup)
 
     #cl_list <- LikelihoodCal2(tree_new,muts_leaves,cell_meta$cluster_kmeans,state_lineages)
     LikelihoodCal_time <- LikelihoodCal_time + proc.time()-c_time
@@ -331,10 +345,10 @@ FindExpTree_Dif_Newick <- function(states,labels,state_lineages,muts,prob_f,newi
         maxl_list <- c(maxl_list,max_likelihood)
 
         tree <- tree_init
-	#tree <- rtree(length(labels), rooted = TRUE, tip.label = labels)
+        #tree <- rtree(length(labels), rooted = TRUE, tip.label = labels)
         tree$edge.length <- rep(1, length(tree$edge.length))
         #maxcl <- LikelihoodCal(tree,muts_leaves,cell_meta$cluster_kmeans,state_lineages)
-        max_likelihood <- LikelihoodCal_Dif(tree,prob_f,states,state_lineages,newick_lookup)
+        max_likelihood <- LikelihoodCal_Dif(tree,muts,prob_f,states,state_lineages,newick_lookup)
         tree_newick <- stringi::stri_replace_all_fixed(NewickTree(tree), " ", "_")
         tree_newick <- stringi::stri_replace_all_fixed(tree_newick, ":1", "")
       }
@@ -351,9 +365,9 @@ FindExpTree_Dif_Newick <- function(states,labels,state_lineages,muts,prob_f,newi
   ances_res <- AncesInfer_sub(tree,muts,states,state_lineages,newick_lookup)
   root_barcode <- ances_res[[1]][dim(ances_res[[1]])[1],]
   root_state_label <- ances_res[[2]][length(ances_res[[2]])]
-
   return(list(best_tree,root_state_label,root_barcode))
 }
+
 
 distH <- function(muts_leaves){
   sim_tree <- list()
