@@ -5,15 +5,15 @@ FindSubtreeNewick <- function(tree, node, num_leaves) {
     i <- 1
     while (node > 0 && i < length(tree_strsplit)) {
       if (tree_strsplit[i] != "(" &&
-          tree_strsplit[i] != ")" &&
-          tree_strsplit[i] != ",") {
+        tree_strsplit[i] != ")" &&
+        tree_strsplit[i] != ",") {
         node <- node - 1
 
         j <- i
 
         while (tree_strsplit[j] != "(" &&
-               tree_strsplit[j] != ")" &&
-               tree_strsplit[j] != ",") {
+          tree_strsplit[j] != ")" &&
+          tree_strsplit[j] != ",") {
           j <- j + 1
         }
         if (node == 0) {
@@ -79,13 +79,23 @@ SwapSubtrees <- function(tree, r1, r2, num_leaves) {
   subtree1_loc <- FindSubtreeNewick(tree, r1, num_leaves)
   subtree2_loc <- FindSubtreeNewick(tree, r2, num_leaves)
 
-  subtree1 <- substr(tree, subtree1_loc[1], subtree1_loc[2])
-  subtree2 <- substr(tree, subtree2_loc[1], subtree2_loc[2])
+  first <- subtree1_loc
+  second <- subtree2_loc
+  if (first[1] > second[1]) {
+    first <- subtree2_loc
+    second <- subtree1_loc
+  }
 
-  # replace subtrees with placeholders in newick tree string
-  tree <- stringi::stri_replace_first_fixed(tree, subtree1, "_TMP_")
-  tree <- stringi::stri_replace_first_fixed(tree, subtree2, subtree1)
-  tree <- stringi::stri_replace_first_fixed(tree, "_TMP_", subtree2)
+  subtree1 <- substr(tree, first[1], first[2])
+  subtree2 <- substr(tree, second[1], second[2])
+
+
+  tree <- paste0(substr(tree, 1, first[1] - 1),
+                 subtree2,
+                 substr(tree, first[2] + 1, second[1] - 1),
+                 subtree1,
+                 substr(tree, second[2] + 1, nchar(tree)),
+                 sep = "")
 
   return(tree)
 }
@@ -154,6 +164,7 @@ SwapTreeTools <- function(tree, r1, r2) {
   return(tree_final)
 }
 
+
 TestLoopNewick <- function(tree, r1, r2) {
   tree_str <- stringi::stri_replace_all_fixed(TreeTools::NewickTree(tree), ":1", "")
 
@@ -171,7 +182,11 @@ TestLoopTreeTools <- function(tree, r1, r2) {
 }
 
 Check <- function(tree, r1, r2, should_plot = FALSE) {
-  tree_str <- stringi::stri_replace_all_fixed(TreeTools::NewickTree(tree), ":1", "")
+  tree <- Preorder(tree)
+  tree_str <- stringi::stri_replace_all_fixed(TreeTools::NewickTree(tree), " ", "_")
+  tree_str <- stringi::stri_replace_all_fixed(tree_str, ":1", "")
+  tree_str <- "(((((cell_86,cell_82),cell_83),(cell_34,cell_4)),(((((((cell_51,cell_93),cell_95),(cell_92,cell_2)),cell_96),((((cell_90,cell_6),((cell_89,cell_88),cell_7)),(cell_1,cell_33)),(cell_52,cell_8))),((cell_91,cell_85),(cell_81,cell_50))),(((cell_5,cell_84),cell_49),cell_87))),(cell_3,cell_94));"
+
   swap1 <- SwapSubtrees(tree_str, r1, r2, length(tree[['tip.label']]))
   swap2 <- stringi::stri_replace_all_fixed(TreeTools::NewickTree(SwapTreeTools(tree, r1, r2)), ":1", "")
 
@@ -204,13 +219,13 @@ TestSwaps <- function() {
   print(file_name)
   print(paste(replicate(25, "-"), collapse = ""))
   print("Profiling Newick Swap")
-  system.time(TestLoopNewick(tree, r1, r2))
+  #system.time(TestLoopNewick(tree, r1, r2))
 
   print("Profiling TreeTools Swap")
-  system.time(TestLoopTreeTools(tree, r1, r2))
-  #check(tree, r1, r2, should_plot=FALSE)
-
+  #system.time(TestLoopTreeTools(tree, r1, r2))
+  Check(tree, r1, r2, should_plot = TRUE)
 }
+
 
 TreeLC2Newick <- function(tree_newick, num_leaves, prob_internal = NULL) {
   num_nodes <- 2 * num_leaves - 1
@@ -233,3 +248,7 @@ TreeLC2Newick <- function(tree_newick, num_leaves, prob_internal = NULL) {
   tree_new <- SwapSubtrees(tree_newick, subtree_swap[1], subtree_swap[2], num_leaves)
   return(tree_new)
 }
+
+#tr <- "(((((cell_86,cell_82),cell_83),(cell_34,cell_4)),(((((((cell_51,cell_93),cell_95),(cell_92,cell_2)),cell_96),((((cell_90,cell_6),((cell_89,cell_88),cell_7)),(cell_1,cell_33)),(cell_52,cell_8))),((cell_91,cell_85),(cell_81,cell_50))),(((cell_5,cell_84),cell_49),cell_87))),(cell_3,cell_94));"
+#Check(ape::read.tree(text = tr), 54, 20, should_plot = TRUE)
+#TreeLC2Newick(tr, 30)

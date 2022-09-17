@@ -31,9 +31,13 @@ main <- function() {
   start_time <- as.numeric(Sys.time())
   print(start_time)
   args <- commandArgs(trailingOnly = TRUE)
-  cm_dir <- 'sim/mut_1024_mu_0.1_pd_0_run_1.csv'
-  meta_dir <- 'sim/meta_1024_mu_0.1_pd_0_run_1.csv'
-  count_dir <- 'sim/expr_1024_mu_0.1_pd_0_run_1.csv'
+  #cm_dir <- 'sim/mut_0.8_pa_1024_mu_0.35_pd_1_Nchar_16_run_2.csv'
+  #meta_dir <- 'sim/meta_0.8_pa_1024_mu_0.35_pd_1_Nchar_16_run_2.csv'
+  #count_dir <- 'sim/expr_0.8_pa_1024_mu_0.35_pd_1_Nchar_16_run_2.csv'
+  cm_dir <- 'sim/mut_256_mu_0.1_pd_0_run_1.csv'
+  meta_dir <- 'sim/meta_256_mu_0.1_pd_0_run_1.csv'
+  count_dir <- 'sim/expr_256_mu_0.1_pd_0_run_1.csv'
+
   out_dir <- 'log_256.tree'
 
   cm <- read.csv(file = cm_dir, row.names = 1, stringsAsFactors = FALSE)
