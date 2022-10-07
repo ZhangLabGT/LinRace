@@ -34,11 +34,14 @@ main <- function() {
   #cm_dir <- 'sim/mut_0.8_pa_1024_mu_0.35_pd_1_Nchar_16_run_2.csv'
   #meta_dir <- 'sim/meta_0.8_pa_1024_mu_0.35_pd_1_Nchar_16_run_2.csv'
   #count_dir <- 'sim/expr_0.8_pa_1024_mu_0.35_pd_1_Nchar_16_run_2.csv'
-  cm_dir <- 'sim/mut_256_mu_0.1_pd_0_run_1.csv'
-  meta_dir <- 'sim/meta_256_mu_0.1_pd_0_run_1.csv'
-  count_dir <- 'sim/expr_256_mu_0.1_pd_0_run_1.csv'
 
-  out_dir <- 'log_256.tree'
+  ncells <- args[1]
+  print(ncells)
+
+  cm_dir <- sprintf('sim/mut_%d_mu_0.1_pd_0_run_1.csv', ncells)
+  meta_dir <- sprintf('sim/meta_%d_mu_0.1_pd_0_run_1.csv', ncells)
+  count_dir <- sprintf('sim/expr_%d_mu_0.1_pd_0_run_1.csv', ncells)
+  out_dir <- sprintf('results/linrace_%d_bin_tree.newick', ncells)
 
   cm <- read.csv(file = cm_dir, row.names = 1, stringsAsFactors = FALSE)
   cell_meta <- read.csv(file = meta_dir, row.names = 1, stringsAsFactors = FALSE)
@@ -55,6 +58,7 @@ main <- function() {
   state_lineages <- returnList[[2]]
   cell_meta <- returnList[[3]]
 
+
   order <- sample(nrow(muts_leaves))
   cell_meta <- cell_meta[order,]
   muts_leaves <- muts_leaves[order,]
@@ -63,9 +67,9 @@ main <- function() {
   #print(as.matrix(dist_h)[1:5,])
   #tree <- NJ_asym(dist_h,muts_leaves,cell_meta$cluster_kmeans,state_lineages)
   tree <- NJ_asym_Dif(muts_leaves, cell_meta$cluster_kmeans, counts, state_lineages, max_Iter = 200)
-  tree$edge.length <- rep(1, length(tree$edge.length))
-  tmp <- NewickTree(tree)
-  print(tmp)
+  tree_gt <- stree(ncells,type = "balanced")
+  score <- RF.dist(tree, tree_gt, normalize=TRUE)
+  print(score)
   end_time <- as.numeric(Sys.time())
   print(end_time)
   print(sprintf('Total Time: %gs', (end_time - start_time)))

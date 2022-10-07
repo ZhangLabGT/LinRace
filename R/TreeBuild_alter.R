@@ -96,7 +96,7 @@ NJ_asym_alter <- function(muts, states, state_lineages, max_Iter = 200) {
 #' @import data.table
 #' @import phangorn
 #' @export
-NJ_asym_Dif <- function(muts, states, counts, state_lineages, max_Iter = 200) {
+NJ_asym_Dif <- function(muts, states, counts, state_lineages, max_Iter = 200, newick= TRUE) {
   labels <- rownames(muts)
   X <- muts
   #X <- BarToMut(muts)
@@ -127,8 +127,11 @@ NJ_asym_Dif <- function(muts, states, counts, state_lineages, max_Iter = 200) {
       labels_sub <- labels[cellids]
 
       if (length(labels_sub) > 1) {
-        #res <- FindExpTree_Dif(states,labels = labels_sub,state_lineages,muts,prob_t,maxIter = max_Iter)
-        res <- FindExpTree_Dif_Newick(states, labels = labels_sub, state_lineages, muts, prob_t, maxIter = max_Iter)
+        if (newick) {
+          res <- FindExpTree_Dif_Newick(states, labels = labels_sub, state_lineages, muts, prob_t, maxIter = max_Iter)
+        } else {
+          res <- FindExpTree_Dif(states,labels = labels_sub,state_lineages,muts,prob_t,maxIter = max_Iter)
+        }
 
         subtree_opt <- res[[1]]
         subtree_opt$name <- as.character(i)
@@ -143,8 +146,6 @@ NJ_asym_Dif <- function(muts, states, counts, state_lineages, max_Iter = 200) {
 
   tree_final <- ConstructTree(tree_backbone, subtree_list)
 }
-
-
 #' Finding the best tree structure based on local search
 #'
 #' @param states the states of the gene expressions of cells
@@ -167,6 +168,7 @@ FindExpTree_Dif <- function(states, labels, state_lineages, muts, prob_f, newick
       leafs <- c(leafs, as.numeric(substr(label, 6, n)))
     }
   }
+  N <- length(unique(states[leafs]))
 
   if (length(labels) > 2) {
     prob_t_sub <- prob_f[leafs, leafs]
@@ -270,8 +272,8 @@ FindExpTree_Dif_Newick <- function(states, labels, state_lineages, muts, prob_f,
     }
   }
   N <- length(unique(states[leafs]))
-  maxIter <- min(c(3 * N * N, maxIter))
-  sliding <- min(100, N * N)
+  maxIter <- min(c( 10 * N * N, maxIter))
+  sliding <- min(c(N * N, 100))
 
   if (length(labels) > 2) {
     prob_t_sub <- prob_f[leafs, leafs]
@@ -361,7 +363,8 @@ FindExpTree_Dif_Newick <- function(states, labels, state_lineages, muts, prob_f,
   if (length(maxl_list) > 0) {
     best_tree <- best_tree_list[[which.max(maxl_list)]]
   }else {
-    best_tree <- tree
+    best_tree <- ape::read.tree(text=tree_newick)
+    #best_tree <- tree
   }
 
   ances_res <- AncesInfer_sub(tree, muts, states, state_lineages, newick_lookup)
