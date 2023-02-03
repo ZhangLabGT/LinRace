@@ -9,3 +9,4 @@ The R package for TedSim can be installed as:
 
 ## Usage
 An example usage of LinRace can be refered in vignettes.
+[Running LinRace on simulated datasets](vignettes/LinRace_test.Rmd)
