@@ -16,7 +16,7 @@ knitr::opts_chunk$set(
 
 ```{r setup}
 library(devtools)
-devtools::load_all()
+#devtools::load_all()
 library(ggplot2)
 devtools::load_all("~/TedSim/TedSim_1.00/TedSim/")
 ```
@@ -143,3 +143,198 @@ p <- ggplot(rf[rf$mu == 0.1,], aes(x=ncells_group, y=rf, fill=mode)) +
     geom_boxplot()
 p
 ```
+
+```{r}
+rf_0222 <- data.frame(ncells = numeric(),mu = numeric(),pd = numeric(),run = numeric(),rf = numeric(),mode = character())
+rf_lintimat <- data.frame(ncells = numeric(),mu = numeric(),pd = numeric(),run = numeric(),rf = numeric(),mode = character())
+rf_linrace_mt <- data.frame(ncells = numeric(),mu = numeric(),pd = numeric(),run = numeric(),rf = numeric(),mode = character())
+for (mu in c(0.01,0.05,0.1,0.2)){
+  for (pd in c(0,1)){
+    for (ncells in c(1024,2048)){
+      for (i in c(1,2,3,4,6,7,8,9,10)){
+        tree_recon_dir <- sprintf("~/LinRace-datasets/results_0222/results_linrace_mt/LinRace_%g_mu_%g_pd_%g_run_%g_bin_tree.newick", 
+                          ncells, mu,pd, i)
+        #tree_recon_dir <- sprintf("~/LinRace-datasets/results_0222/results_lintimat/LinTIMaT_%g_mu_%g_pd_%g_run_%g_bin_tree.newick", 
+        #                  ncells, mu,pd, i)
+        #tree_recon_dir <- sprintf("~/LinRace-datasets/results_0222/results_linrace/LinRace_%g_mu_%g_pd_%g_run_%g_bin_tree.newick", 
+        #                  ncells, mu,pd, i)
+        mut_dir <- sprintf("~/LinRace-datasets/sim/mut_%g_mu_%g_pd_%g_run_%g.csv", 
+                          ncells, mu,pd, i)
+        #tree_gt_dir <- sprintf("~/LinRace/tree_%g.tree", 
+        #                  ncells)
+        tree_lintimat <- read.tree(file = tree_recon_dir)
+        #tree_lintimat <- drop.tip(tree_lintimat,'normal')
+        #tree_gt <- read.tree(file = tree_gt_dir)
+        tree_gt <- stree(ncells,type = "balanced")
+        tip_label <- c()
+        for (node in tree_gt$tip.label){
+          tip <- paste('cell_',substr(node,2,nchar(node)),sep = '')
+          tip_label <- c(tip_label,tip)
+        }
+        tree_gt$tip.label <- tip_label
+        
+        # muts_leaves <- read.csv(file = mut_dir,row.names = 1,stringsAsFactors = FALSE)
+        # order <- sample(nrow(muts_leaves))
+        # muts_leaves <- muts_leaves[order,]
+        # sim_tree <- list()
+        # for (j in 1:dim(muts_leaves)[1]){
+        #   sim_tree[[j]] <- as.character(muts_leaves[j,])
+        #   #names(sim_tree[[i]]) <- rownames(muts_leaves)[i]
+        # }
+        # #print(length(sim_tree))
+        # names(sim_tree) <- rownames(muts_leaves)
+        # #nmstrings <- c('0','-',c(1:100))
+        # nmstrings <- unique(unlist(sim_tree))
+        # 
+        # sim_data<- phyDat(sim_tree,type = 'USER',levels = nmstrings)
+        # sim_data <- subset(sim_data,1:length(sim_tree))
+        # #print(length(sim_data))
+        # #dist_wh2 <- WH(sim_data, InfoW, dropout=TRUE)
+        # dist_h <- dist.hamming(sim_data)
+        # tree_nj <- nj(dist_h)
+        #tip_label <- c()
+        #for (node in tree_linrace$tip.label){
+        #  tip <- substr(node,2,nchar(node)-1)
+        #  tip_label <- c(tip_label,tip)
+        #}
+        #tree_linrace$tip.label <- tip_label
+        
+        print( RF.dist(tree_lintimat, tree_gt, normalize = TRUE))
+        temp <- data.frame(ncells = ncells,mu = mu,pd = pd,run = i,rf = RF.dist(tree_lintimat, tree_gt, normalize = TRUE),mode = "LinRace_mt")
+        rf_linrace_mt <- rbind(rf_linrace_mt,temp)
+        #temp <- data.frame(ncells = ncells,mu = mu,pd = pd,run = i,rf = RF.dist(tree_lintimat, tree_gt, normalize = TRUE),mode = "LinRace")
+        #rf_0222 <- rbind(rf_0222,temp)
+        #temp <- data.frame(ncells = ncells,mu = mu,pd = pd,run = i,rf = RF.dist(tree_nj, tree_gt, normalize = TRUE),mode = "NJ")
+        #rf_0222 <- rbind(rf_0222,temp)
+      }
+    }
+}
+}
+write.csv(rf_0222,"~/LinRace-datasets/rf_0222.csv",row.names = FALSE)
+write.csv(rf_lintimat,"~/LinRace-datasets/rf_lintimat_0222.csv",row.names = FALSE)
+write.csv(rf_linrace_mt,"~/LinRace-datasets/rf_linrace_mt_0222.csv",row.names = FALSE)
+
+rf <- rbind(rf_0222[1:320,],rf_lintimat,rf_linrace_mt)
+
+rf$mu_group <- as.factor(rf$mu)
+rf$ncells_group <- as.factor(rf$ncells)
+rf$pd_group <- as.factor(rf$pd)
+
+for (pd in c(0,1)){
+  for (ncells in c(1024,2048)){
+    rf_sub <- rf[rf$pd == pd,]
+    rf_sub <- rf_sub[rf_sub$ncells == ncells,]
+    p <- ggplot(rf_sub, aes(x=mu_group, y=rf, fill=mode)) + 
+    geom_boxplot()
+    p <- p + theme(axis.text = element_text(size = 20), axis.title = element_text(size = 30),legend.title = element_text(size = 15),legend.text = element_text(size = 20))
+    plt_dir <- sprintf("~/LinRace-datasets/plots/box_compare_pd_%g_ncells_%g.png",pd,ncells)
+    ggsave(plt_dir,plot = p)
+  }
+}
+rf <- rf[rf$pd == 1,]
+p <- ggplot(rf[rf$ncells == 2048,], aes(x=mu_group, y=rf, fill=mode)) + 
+    geom_boxplot()
+p
+```
+
+```{r}
+ncells <- 1024
+#state tree 1
+#phyla <- read.tree(text='((t1:4, (t2:2, t3:2):2):2);')
+#state tree 2
+phyla <- read.tree(text='((t1:4, t2:4, t3:4, t4:4, t5:4, t6:4):2);')
+#phyla <- read.tree(text='((t1:2, t2:2):1, (t3:2, t4:2):1):2;')
+N_nodes <- 2*ncells-2
+ngenes <- 500
+max_walk <- 8
+p_a <- 0.8
+n_cif <- 30
+n_diff <- 20
+cif_step <- 0.5
+#cif_step <- 0.2
+ncells_list <- c(1024,2048)
+mu_list <- c(0.025,0.05,0.075)
+mu <- 0.01
+seeds <- runif(10000,1,99999)
+
+p_d <- 1
+N_char <- 16
+i <- 10
+
+tree_ct <- stree(ncells,type = "balanced")
+tip_label <- c()
+for (node in tree_ct$tip.label){
+  tip <- paste('cell_',substr(node,2,nchar(node)),sep = '')
+  tip_label <- c(tip_label,tip)
+}
+tree_ct$tip.label <- tip_label
+
+#simulate true counts
+character_matrix_dir <- sprintf("~/LinRace-datasets/mut_%g_mu_%g_pd_%g_run_%g.csv", 
+                               ncells, mu, p_d,i)
+meta_dir <- sprintf("~/LinRace-datasets/meta_%g_mu_%g_pd_%g_run_%g.csv", 
+                               ncells, mu, p_d,i)
+
+muts_leaves <- read.csv(file = character_matrix_dir,row.names = 1,stringsAsFactors = FALSE)
+states_leaves <- read.csv(file = meta_dir,row.names = 1,stringsAsFactors = FALSE)
+
+muts_leaves <- muts_leaves[sample(nrow(muts_leaves)),]
+
+state_counter <- 1
+states_intermediate <- states_leaves[,'cluster']
+for (cluster_id in sort(unique(states_leaves[,'cluster']))){
+  depth_range <- sort(unique(states_leaves[states_leaves[,'cluster']==cluster_id,'depth']))
+  state_inter <- state_counter:(state_counter + length(depth_range)-1)
+  state_counter <- state_counter + length(depth_range)
+  print(cluster_id)
+  print(state_inter)
+  for (i in 1:length(depth_range)){
+    states_intermediate[states_leaves[,'cluster']==cluster_id & states_leaves[,'depth'] == depth_range[i]]<- state_inter[i]
+  }
+}
+
+#mu_d1 = c( 30, 20, 10, 5, 5, 1, 0.01, 0.001)
+#mu_d1 = mu_d1/sum(mu_d1)
+#simn = 100 # number of cell samples
+#m = 200  ## number of targets
+#mu_d = 0.03 # mutation rate
+#d = 12 # number of cell division
+#p_d = 0.005 # dropout probability
+
+sim_tree <- list()
+for (j in 1:dim(muts_leaves)[1]){
+  sim_tree[[j]] <- as.character(muts_leaves[j,])
+  #names(sim_tree[[i]]) <- rownames(muts_leaves)[i]
+}
+
+names(sim_tree) <- rownames(muts_leaves)
+#nmstrings <- c('0','-',c(1:100))
+nmstrings <- unique(unlist(sim_tree))
+sim_data <- phyDat(sim_tree,type = 'USER',levels = nmstrings)
+
+#dist_wh2 <- WH(sim_data, InfoW, dropout=TRUE)
+dist_h <- dist.hamming(sim_data)
+
+Treenj = nj(dist_h)
+TreeNJ_h <- multi2di(Treenj)
+#TreeFM_wh2 = fastme.ols(dist_wh2)
+TreeNJ_h$edge.length <- rep(1, length(TreeNJ_h$edge.length))
+
+state_lineages <- list()
+for (j in 1:6){
+    lineage <- c(sort(unique(states_intermediate[states_leaves[,'cluster']==8])),sort(unique(states_intermediate[states_leaves[,'cluster']==j])))
+    state_lineages[[length(state_lineages)+1]] <- lineage
+}
+ #construct the state lineages for the new tree:::
+cell_meta <- as.data.frame(states_leaves)
+cell_meta$cluster_kmeans <- states_intermediate
+muts_leaves <- MutsTransform(muts_leaves)
+
+#tree <- NJ_asym(dist_h,muts_leaves,cell_meta$cluster_kmeans,state_lineages)
+tree <- NJ_asym_alter(muts_leaves,cell_meta$cluster_kmeans,state_lineages,max_Iter = 200)
+
+temp <- data.frame(mu = mu,run = i,NJ = RF.dist(TreeNJ_h, tree_ct, normalize = TRUE),NJ_asym = RF.dist(tree, tree_ct, normalize = TRUE))
+df <- rbind(df,temp)
+```
+
+

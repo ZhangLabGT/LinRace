@@ -1,0 +1,198 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="ChangeListManager">
+    <list default="true" id="9db57c09-7077-4224-8596-1042904b7548" name="Changes" comment="">
+      <change afterPath="$PROJECT_DIR$/.idea/LinRace.iml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.idea/inspectionProfiles/profiles_settings.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.idea/modules.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.idea/vcs.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Linrace_compare.R" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/dclear_run.R" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/lintimat.sh" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/lintimat_gen.R" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/newsim/cif_0.4_pa_1024_mu_0.1_pd_0_Nchar_64_run_1.Rds" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/newsim/cif_0.4_pa_128_mu_0.1_pd_0_Nchar_64_run_1.Rds" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/newsim/cif_0.4_pa_2048_mu_0.1_pd_0_Nchar_64_run_1.Rds" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/newsim/cif_0.4_pa_256_mu_0.1_pd_0_Nchar_64_run_1.Rds" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/newsim/cif_0.4_pa_512_mu_0.1_pd_0_Nchar_64_run_1.Rds" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/newsim/expr_0.4_pa_1024_mu_0.1_pd_0_Nchar_64_run_1.csv" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/newsim/expr_0.4_pa_128_mu_0.1_pd_0_Nchar_64_run_1.csv" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/newsim/expr_0.4_pa_2048_mu_0.1_pd_0_Nchar_64_run_1.csv" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/newsim/expr_0.4_pa_256_mu_0.1_pd_0_Nchar_64_run_1.csv" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/newsim/expr_0.4_pa_512_mu_0.1_pd_0_Nchar_64_run_1.csv" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/newsim/meta_0.4_pa_1024_mu_0.1_pd_0_Nchar_64_run_1.csv" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/newsim/meta_0.4_pa_128_mu_0.1_pd_0_Nchar_64_run_1.csv" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/newsim/meta_0.4_pa_2048_mu_0.1_pd_0_Nchar_64_run_1.csv" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/newsim/meta_0.4_pa_256_mu_0.1_pd_0_Nchar_64_run_1.csv" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/newsim/meta_0.4_pa_512_mu_0.1_pd_0_Nchar_64_run_1.csv" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/newsim/mut_0.4_pa_1024_mu_0.1_pd_0_Nchar_64_run_1.csv" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/newsim/mut_0.4_pa_128_mu_0.1_pd_0_Nchar_64_run_1.csv" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/newsim/mut_0.4_pa_2048_mu_0.1_pd_0_Nchar_64_run_1.csv" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/newsim/mut_0.4_pa_256_mu_0.1_pd_0_Nchar_64_run_1.csv" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/newsim/mut_0.4_pa_512_mu_0.1_pd_0_Nchar_64_run_1.csv" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/newsim/profile_0.4_pa_1024_mu_0.1_pd_0_Nchar_64_run_1.txt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/newsim/profile_0.4_pa_128_mu_0.1_pd_0_Nchar_64_run_1.txt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/newsim/profile_0.4_pa_2048_mu_0.1_pd_0_Nchar_64_run_1.txt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/newsim/profile_0.4_pa_256_mu_0.1_pd_0_Nchar_64_run_1.txt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/newsim/profile_0.4_pa_512_mu_0.1_pd_0_Nchar_64_run_1.txt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/newsim/top_genes_0.4_pa_1024_mu_0.1_pd_0_Nchar_64_run_1.txt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/newsim/top_genes_0.4_pa_128_mu_0.1_pd_0_Nchar_64_run_1.txt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/newsim/top_genes_0.4_pa_2048_mu_0.1_pd_0_Nchar_64_run_1.txt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/newsim/top_genes_0.4_pa_256_mu_0.1_pd_0_Nchar_64_run_1.txt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/newsim/top_genes_0.4_pa_512_mu_0.1_pd_0_Nchar_64_run_1.txt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/newsim/tree_0.4_pa_1024_mu_0.1_pd_0_Nchar_64_run_1.tree" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/newsim/tree_0.4_pa_128_mu_0.1_pd_0_Nchar_64_run_1.tree" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/newsim/tree_0.4_pa_2048_mu_0.1_pd_0_Nchar_64_run_1.tree" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/newsim/tree_0.4_pa_256_mu_0.1_pd_0_Nchar_64_run_1.tree" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/newsim/tree_0.4_pa_512_mu_0.1_pd_0_Nchar_64_run_1.tree" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/rf_dclear.R" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/rf_lintimat.R" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/sim/expr_2048_mu_0.1_pd_0_run_1.csv" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/sim/expr_256_mu_0.1_pd_0_run_2.csv" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/sim/expr_256_mu_0.1_pd_0_run_3.csv" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/sim/expr_256_mu_0.1_pd_0_run_4.csv" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/sim/expr_256_mu_0.1_pd_0_run_5.csv" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/sim/expr_512_mu_0.1_pd_0_run_1.csv" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/sim/meta_2048_mu_0.1_pd_0_run_1.csv" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/sim/meta_256_mu_0.1_pd_0_run_2.csv" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/sim/meta_256_mu_0.1_pd_0_run_3.csv" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/sim/meta_256_mu_0.1_pd_0_run_4.csv" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/sim/meta_256_mu_0.1_pd_0_run_5.csv" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/sim/meta_512_mu_0.1_pd_0_run_1.csv" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/sim/mut_2048_mu_0.1_pd_0_run_1.csv" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/sim/mut_256_mu_0.1_pd_0_run_2.csv" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/sim/mut_256_mu_0.1_pd_0_run_3.csv" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/sim/mut_256_mu_0.1_pd_0_run_4.csv" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/sim/mut_256_mu_0.1_pd_0_run_5.csv" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/sim/mut_512_mu_0.1_pd_0_run_1.csv" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/misc.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/rAvailablePackageCache.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/rAvailablePackageCache.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/rpackages.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Linrace_dif_run_cl.R" beforeDir="false" afterPath="$PROJECT_DIR$/Linrace_dif_run_cl.R" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/R/TreeBuild_alter.R" beforeDir="false" afterPath="$PROJECT_DIR$/R/TreeBuild_alter.R" afterDir="false" />
+    </list>
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="FileTemplateManagerImpl">
+    <option name="RECENT_TEMPLATES">
+      <list>
+        <option value="R Script" />
+      </list>
+    </option>
+  </component>
+  <component name="Git.Settings">
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+  </component>
+  <component name="MarkdownSettingsMigration">
+    <option name="stateVersion" value="1" />
+  </component>
+  <component name="ProjectId" id="2Es7zqYkvaWzeaLNCUN8PLm7s25" />
+  <component name="ProjectLevelVcsManager" settingsEditedManually="true" />
+  <component name="ProjectViewState">
+    <option name="hideEmptyMiddlePackages" value="true" />
+    <option name="showLibraryContents" value="true" />
+  </component>
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;RunOnceActivity.OpenProjectViewOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
+    &quot;SHARE_PROJECT_CONFIGURATION_FILES&quot;: &quot;true&quot;,
+    &quot;WebServerToolWindowFactoryState&quot;: &quot;false&quot;,
+    &quot;last_opened_file_path&quot;: &quot;/Users/pranavputta/GitHub/LinRace/newsim&quot;,
+    &quot;settings.editor.selected.configurable&quot;: &quot;com.jetbrains.python.configuration.PyActiveSdkModuleConfigurable&quot;
+  }
+}</component>
+  <component name="RecentsManager">
+    <key name="CopyFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$/newsim" />
+      <recent name="$PROJECT_DIR$/sim" />
+    </key>
+  </component>
+  <component name="RunManager">
+    <configuration name="plots" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
+      <module name="LinRace" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/plots.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
+    <recent_temporary>
+      <list>
+        <item itemvalue="Python.plots" />
+      </list>
+    </recent_temporary>
+  </component>
+  <component name="SpellCheckerSettings" RuntimeDictionaries="0" Folders="0" CustomDictionaries="0" DefaultDictionary="application-level" UseSingleDictionary="true" transferred="true" />
+  <component name="TaskManager">
+    <task active="true" id="Default" summary="Default task">
+      <changelist id="9db57c09-7077-4224-8596-1042904b7548" name="Changes" comment="" />
+      <created>1663372703657</created>
+      <option name="number" value="Default" />
+      <option name="presentableId" value="Default" />
+      <updated>1663372703657</updated>
+      <workItem from="1663372707334" duration="87000" />
+      <workItem from="1663372803829" duration="6000" />
+      <workItem from="1663372819238" duration="13785000" />
+      <workItem from="1664840063655" duration="55389000" />
+      <workItem from="1665150124000" duration="3299000" />
+    </task>
+    <servers />
+  </component>
+  <component name="TypeScriptGeneratedFilesManager">
+    <option name="version" value="3" />
+  </component>
+  <component name="Vcs.Log.Tabs.Properties">
+    <option name="TAB_STATES">
+      <map>
+        <entry key="MAIN">
+          <value>
+            <State />
+          </value>
+        </entry>
+      </map>
+    </option>
+  </component>
+  <component name="XDebuggerManager">
+    <breakpoint-manager>
+      <breakpoints>
+        <line-breakpoint enabled="true" type="the-r-line">
+          <url>file://$PROJECT_DIR$/R/TreeBuild_alter.R</url>
+          <line>365</line>
+          <option name="timeStamp" value="29" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" type="the-r-line">
+          <url>file://$PROJECT_DIR$/rf_lintimat.R</url>
+          <line>18</line>
+          <option name="timeStamp" value="33" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" type="the-r-line">
+          <url>file://$PROJECT_DIR$/dclear_run.R</url>
+          <line>61</line>
+          <option name="timeStamp" value="36" />
+        </line-breakpoint>
+      </breakpoints>
+    </breakpoint-manager>
+  </component>
+  <component name="com.intellij.coverage.CoverageDataManagerImpl">
+    <SUITE FILE_PATH="coverage/LinRace$plots.coverage" NAME="plots Coverage Results" MODIFIED="1665152937916" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+  </component>
+</project>

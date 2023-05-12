@@ -1,0 +1,93 @@
+---
+title: "LinRace_run_cl"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{LinRace_run_cl}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+```{r setup}
+library(LinRace)
+```
+
+```{r}
+Preprocessing <- function(muts_leaves,phyla,state_leaves){
+  state_counter <- 1
+  states_intermediate <- states_leaves[,'cluster']
+  for (cluster_id in sort(unique(states_leaves[,'cluster']))){
+    depth_range <- sort(unique(states_leaves[states_leaves[,'cluster']==cluster_id,'depth']))
+    state_inter <- state_counter:(state_counter + length(depth_range)-1)
+    state_counter <- state_counter + length(depth_range)
+    print(cluster_id)
+    print(state_inter)
+    for (i in 1:length(depth_range)){
+      states_intermediate[states_leaves[,'cluster']==cluster_id & states_leaves[,'depth'] == depth_range[i]]<- state_inter[i]
+    }
+  }
+
+  state_lineages <- list()
+  for (j in 1:6){
+    lineage <- c(sort(unique(states_intermediate[states_leaves[,'cluster']==8])),sort(unique(states_intermediate[states_leaves[,'cluster']==j])))
+    state_lineages[[length(state_lineages)+1]] <- lineage
+  }
+
+  cell_meta <- as.data.frame(state_leaves)
+  cell_meta$cluster_kmeans <- states_intermediate
+  muts_leaves <- MutsTransform(muts_leaves)
+
+  return(list(muts_leaves,state_lineages,cell_meta))
+}
+
+distH <- function(muts_leaves){
+  sim_tree <- list()
+  for (i in 1:dim(muts_leaves)[1]){
+    sim_tree[[i]] <- c(muts_leaves[i,])
+    #names(sim_tree[[i]]) <- rownames(muts_leaves)[i]
+  }
+
+  names(sim_tree) <- rownames(muts_leaves)
+  #nmstrings <- c('0','-',c(1:100))
+  nmstrings <- unique(unlist(sim_tree))
+  sim_data <- phyDat(sim_tree,type = 'USER',levels = nmstrings)
+
+  #dist_wh2 <- WH(sim_data, InfoW, dropout=TRUE)
+  dist_h <- dist.hamming(sim_data)
+  return(dist_h)
+}
+
+main <- function() {
+  args <- commandArgs(trailingOnly = TRUE)
+  cm_dir <- args[1]
+  meta_dir <- args[2]
+  out_dir <- args[3]
+
+  cm <- read.table(file = cm_dir,row.names = 1,sep = ",",quote = "")
+  cell_meta <- read.table(file = meta_dir,sep = ",")
+  cell_state_labels <- cell_meta[,"cluster"]
+
+  phyla <- read.tree(text='((t1:4, t2:4, t3:4, t4:4, t5:4, t6:4):2);')
+
+  returnList <- Preprocessing(cm,phyla,cell_meta)
+  muts_leaves <- returnList[[1]]
+  state_lineages <- returnList[[2]]
+  cell_meta <- returnList[[3]]
+
+  dist_h <- distH(muts_leaves)
+
+  tree <- NJ_asym(dist_h,muts_leaves,cell_meta$cluster_kmeans,state_lineages)
+
+  write.tree(tree, file = out_dir)
+}
+
+main()
+
+```
+
