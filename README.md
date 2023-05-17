@@ -1,3 +1,10 @@
+**Table of contents**
+
+* [Installation](#Installation)
+* [Usage](#Usage)
+* [Results](#results)
+* [Contact](#contact)
+
 # LinRace
 LinRace is a method that integrates the lineage barcode and gene expression data using the asymmetric cell division model and infers cell lineage under a framework combining Neighbor Joining and maximum-likelihood heuristics.
 
@@ -27,3 +34,9 @@ The following figure shows an example application of LinRace on the ZF1-F3 sampl
 **a**. LinRace reconstructed tree. The outer ring represents major cell type assignments and the inner colors on the edges show detailed intermediate cell type assignments. 
 **b**. Properties of the reconstructed trees from different methods. The max depth means the maximum total edge length going from the root to any leaf cell. 
 **c**. A detailed look of two GES (Gene Expression Subtrees) in LinRace reconstructed tree with inferred ancestral states.
+
+## Contact
+
+GitHub issues are welcomed.
+It is also possible to send email to the main author
+`Xinhai Pan (xpan78 at gatech.edu)`.
