@@ -36,7 +36,7 @@ The following figure shows an example application of LinRace on the ZF1-F3 sampl
 **c**. A detailed look of two GES (Gene Expression Subtrees) in LinRace reconstructed tree with inferred ancestral states.
 **Note**: Due to GitHub LFS quota issue, raw matrix.mtx.gz files used for the vignette is not uploaded yet. One can find the corresponding datasets in [[GSE117542]](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE117542).
 ## Contact
-
+Other datasets used in the paper can be requested and
 GitHub issues are welcomed.
 It is also possible to send email to the main author
 `Xinhai Pan (xpan78 at gatech.edu)`.
