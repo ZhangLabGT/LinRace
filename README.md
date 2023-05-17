@@ -21,7 +21,7 @@ Example usages of LinRace can be refered in vignettes.
 
 ## Results
 
-The following figure shows an example application of LinRace on the ZF1-F3 sample (750 cells) from scGESTAULT datasets in [(1)](https://doi.org/10.1038/nbt.4103)]:
+The following figure shows an example application of LinRace on the ZF1-F3 sample (750 cells) from scGESTAULT datasets in [(1)](https://doi.org/10.1038/nbt.4103):
 ![LinRace_Figures (3)](https://github.com/ZhangLabGT/LinRace/assets/39555451/789a707d-7fe7-4e22-9c3f-d39d77234541)
 
 a. LinRace reconstructed tree. The outer ring represents major cell type assignments and the inner colors on the edges show detailed intermediate cell type assignments. 
