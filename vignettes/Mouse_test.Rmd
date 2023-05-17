@@ -1,0 +1,47 @@
+---
+title: "R Notebook"
+output:
+  html_document:
+    df_print: paged
+---
+
+This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
+
+Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Ctrl+Shift+Enter*. 
+
+#library loading
+```{r}
+.libPaths("/nethome/xpan78/LinRace/Rlib")
+library(devtools)
+load_all("/project/xpan78/LinRace-temp")
+#library(LinRace)
+
+library(TedSim)
+library(umap)
+library(ggplot2)
+library(phangorn)
+library(DCLEAR)
+library(TedSim)
+library(TreeDist)
+library(slingshot)
+library(readxl)
+library(Seurat)
+```
+
+#loading 10X objects
+```{r}
+embryo2a.data <- Read10X(data.dir = "/nethome/xpan78/data_mchan/embryo2/2a/",gene.column = 1)
+embryo2b.data <- Read10X(data.dir = "/nethome/xpan78/data_mchan/embryo2/2a/",gene.column = 1)
+```
+
+# Initialize the Seurat object with the raw (non-normalized data).
+```{r}
+
+```
+
+
+Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Ctrl+Alt+I*.
+
+When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Ctrl+Shift+K* to preview the HTML file).
+
+The preview shows you a rendered HTML copy of the contents of the editor. Consequently, unlike *Knit*, *Preview* does not run any R code chunks. Instead, the output of the chunk when it was last run in the editor is displayed.
