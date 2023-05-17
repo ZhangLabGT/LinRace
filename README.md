@@ -34,7 +34,7 @@ The following figure shows an example application of LinRace on the ZF1-F3 sampl
 **a**. LinRace reconstructed tree. The outer ring represents major cell type assignments and the inner colors on the edges show detailed intermediate cell type assignments. 
 **b**. Properties of the reconstructed trees from different methods. The max depth means the maximum total edge length going from the root to any leaf cell. 
 **c**. A detailed look of two GES (Gene Expression Subtrees) in LinRace reconstructed tree with inferred ancestral states.
-
+**Note**: Due to GitHub LFS quota issue, raw matrix.mtx.gz files used for the vignette is not uploaded yet. One can find the corresponding datasets in [[GSE117542]](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE117542).
 ## Contact
 
 GitHub issues are welcomed.
