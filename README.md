@@ -24,6 +24,6 @@ Example usages of LinRace can be refered in vignettes.
 The following figure shows an example application of LinRace on the ZF1-F3 sample (750 cells) from scGESTAULT datasets in [[1]](https://doi.org/10.1038/nbt.4103):
 ![LinRace_Figures (3)](https://github.com/ZhangLabGT/LinRace/assets/39555451/789a707d-7fe7-4e22-9c3f-d39d77234541)
 
-a. LinRace reconstructed tree. The outer ring represents major cell type assignments and the inner colors on the edges show detailed intermediate cell type assignments. 
-b. Properties of the reconstructed trees from different methods. The max depth means the maximum total edge length going from the root to any leaf cell. 
-c. A detailed look of two GES (Gene Expression Subtrees) in LinRace reconstructed tree with inferred ancestral states.
+**a**. LinRace reconstructed tree. The outer ring represents major cell type assignments and the inner colors on the edges show detailed intermediate cell type assignments. 
+**b**. Properties of the reconstructed trees from different methods. The max depth means the maximum total edge length going from the root to any leaf cell. 
+**c**. A detailed look of two GES (Gene Expression Subtrees) in LinRace reconstructed tree with inferred ancestral states.
