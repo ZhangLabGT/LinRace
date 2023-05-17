@@ -1,0 +1,42 @@
+0 - trophoblast stem cells
+1 - neural ectoderm anterior
+2 - primitive streak late
+3 - anterior primitive streak
+4 - primitive/definitive endoderm
+5 - allantois
+6 - secondary heart field/splanchnic lateral plate
+7 - gut endoderm
+8 - ectoderm early 1
+9 - primitive blood early
+10 - preplacodal ectoderm
+11 - neural ectoderm posterior
+12 - posterior lateral plate mesoderm
+13 - hematopoietic/endothelial progenitors
+14 - parietal endoderm
+15 - amnion mesoderm early
+16 - surface ectoderm
+17 - epiblast
+18 - somites
+19 - ectoderm early 2
+20 - splanchnic lateral plate/anterior paraxial mesoderm
+21 - primitive heart tube
+22 - primitive blood late
+23 - notochord
+24 - fore/midbrain
+25 - distal extraembryonic ectoderm
+26 - neuromesodermal progenitor early
+27 - primordial germ cells
+28 - differentiated trophoblasts
+29 - visceral endoderm early
+30 - presomitic mesoderm
+31 - neuromesodermal progenitor late
+32 - angioblasts
+33 - neural crest
+34 - pharyngeal arch mesoderm
+35 - similar to neural crest
+36 - primitive blood progenitors
+37 - primitive streak early
+38 - node
+39 - future spinal cord
+40 - visceral endoderm late
+41 - amnion mesoderm late
