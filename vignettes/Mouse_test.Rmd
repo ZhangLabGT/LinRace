@@ -16,7 +16,6 @@ library(devtools)
 load_all("/project/xpan78/LinRace-temp")
 #library(LinRace)
 
-library(TedSim)
 library(umap)
 library(ggplot2)
 library(phangorn)
@@ -30,15 +29,151 @@ library(Seurat)
 
 #loading 10X objects
 ```{r}
-embryo2a.data <- Read10X(data.dir = "/nethome/xpan78/data_mchan/embryo2/2a/",gene.column = 1)
-embryo2b.data <- Read10X(data.dir = "/nethome/xpan78/data_mchan/embryo2/2a/",gene.column = 1)
+fpath_2a <- system.file("extdata", "2a/", package="LinRace")
+fpath_2b <- system.file("extdata", "2b/", package="LinRace")
+
+embryo2a.data <- Read10X(data.dir = fpath_2a,gene.column = 1)
+embryo2b.data <- Read10X(data.dir = fpath_2b,gene.column = 1)
 ```
 
-# Initialize the Seurat object with the raw (non-normalized data).
+# Merging datasets and import meta data
 ```{r}
+embryo2a <- CreateSeuratObject(counts = embryo2a.data, project = "embryo2a", min.cells = 3, min.features = 200)
+embryo2b <- CreateSeuratObject(counts = embryo2b.data, project = "embryo2b", min.cells = 3, min.features = 200)
+#rm(embryo2a.data)
+#rm(embryo2b.data)
 
+embryo2 <- merge(embryo2a, y = embryo2b, add.cell.ids = c("2a", "2b"), project = "embryo2")
+#rm(embryo2a)
+#rm(embryo2b)
+
+fpath_meta_m <- system.file("extdata", "GSE122187_CellStateKernels.xls", package="LinRace")
+fpath_meta_ct <- system.file("extdata", "cell_states_me.txt", package="LinRace")
+
+cluster_centers <- read_excel(fpath_meta_m)
+ct_mouse <- read.table(fpath_meta_ct,sep = "-")
+
+embryo2 <- subset(embryo2, features = cluster_centers$Gene)
+embryo2 <- NormalizeData(embryo2, normalization.method = "LogNormalize", scale.factor = 10000)
+counts_embryo2 <- GetAssayData(object = embryo2, slot = "counts")
+cluster_centers <- cluster_centers[cluster_centers$Gene %in% rownames(embryo2),2:ncol(cluster_centers)]
+cluster_ids <- c()
+
+
+for (i in c(1:ncol(embryo2))){
+  expr_i <- counts_embryo2[,i]
+  dist_cc <- as.matrix(dist(t(cbind(expr_i, cluster_centers))))
+  cluster_indent <- names(which.min(dist_cc[1,2:ncol(dist_cc)]))
+  cluster_ids <- c(cluster_ids,ct_mouse$V2[ct_mouse$V1 == cluster_indent])
+}
+embryo2 <- AddMetaData(
+  object = embryo2,
+  metadata = cluster_ids,
+  col.name = 'cluster.idents'
+)
+Idents(embryo2) <- cluster_ids
 ```
 
+#UMAP visualization of the dataset
+```{r}
+all.genes <- rownames(embryo2)
+embryo2 <- ScaleData(embryo2, features = all.genes)
+embryo2 <- FindVariableFeatures(object = embryo2)
+embryo2 <- RunPCA(embryo2, features = VariableFeatures(object = embryo2), npc = 50)
+embryo2 <- RunUMAP(embryo2, dims = 1:10)
+DimPlot(embryo2, reduction = "umap")
+```
+
+#Importing lineage barcode data
+```{r}
+fpath_cm <- system.file("extdata", "test_embryo2_character_matrix.txt", package="LinRace")
+cm_embryo2 <- read.csv(fpath_cm,sep = "\t")
+muts_embryo2 <- cm_embryo2[,2:ncol(cm_embryo2)]
+rownames(muts_embryo2) <- gsub("-1","", cm_embryo2[,1])
+names <- colnames(embryo2)
+names <- gsub("2a_","", names)
+names <- gsub("2b_","", names)
+```
+
+#Preprocessing of the barcode data
+```{r}
+embryo2_sub <- subset(embryo2, cells = colnames(embryo2)[!duplicated(names)])
+embryo2_sub <- RenameCells(embryo2_sub,new.names = names[!duplicated(names)])
+names <- colnames(embryo2_sub)
+
+names <- names[names %in% rownames(muts_embryo2)]
+embryo2_sub <- subset(embryo2_sub, cells = names)
+embryo2_sub <- RunUMAP(embryo2_sub, dims = 1:10)
+DimPlot(embryo2_sub, reduction = "umap")
+muts_embryo2 <- muts_embryo2[rownames(muts_embryo2) %in% names,]
+```
+
+#UMAP again to visualize the subset dataset
+```{r}
+rownames(muts_embryo2) <- paste("cell",1:(nrow(muts_embryo2)),sep = "_")
+#colnames(embryo2_sub) <- paste("cell",1:(nrow(muts_embryo2)),sep = "_")
+
+colnames(muts_embryo2) <- paste0("V",1:ncol(muts_embryo2))
+
+umap_res <- Embeddings(embryo2_sub, reduction = "umap")
+df <- data.frame(dim1 = umap_res[,1], dim2 = umap_res[,2])
+p <- ggplot(df) + geom_point(aes(x = dim1,y = dim2,col = embryo2_sub$cluster.idents)) + labs(col = "Cluster ID") + xlab("UMAP 1") + ylab("UMAP 2")
+p <- p + theme(axis.text = element_text(size = 15), axis.title = element_text(size = 20),legend.title = element_text(size = 15),legend.text = element_text(size = 15))
+#plt_dir <- sprintf("/nethome/xpan78/data_mchan/umap_mouse.png")
+#ggsave(plt_dir,plot = p,width=20,height=10)
+```
+
+#Running Slingshot
+```{r}
+rownames(umap_res) <- paste("cell",1:(nrow(muts_embryo2)),sep = "_")
+labels_new <-as.character(embryo2_sub$cluster.idents)
+
+
+sce <- slingshot(data = umap_res,clusterLabels = labels_new, dist.method = "simple",start.clus = " primitive/definitive endoderm")
+#sce <- slingshot(data = umap_res)
+state_lineages <- slingLineages(sce)
+plot(umap_res, col = factor(labels_new), pch = 16, cex = 1, main="Slingshot State Lineages",
+     xlab="UMAP 1", ylab="UMAP 2",)
+lines(SlingshotDataSet(sce),col = "black", lwd = 2, type = 'lineages')
+```
+
+#Running LinRace on the data
+```{r}
+expr_mouse <- GetAssayData(object = embryo2_sub, slot = "counts")
+expr_mouse <- as.matrix(t(expr_mouse))
+rownames(expr_mouse) <- paste("cell",1:(nrow(muts_embryo2)),sep = "_")
+tree_linrace <- NJ_asym_Dif(as.data.frame(muts_embryo2),labels_new,expr_mouse,state_lineages,max_Iter = 500)
+
+#write.tree(tree_linrace,"/nethome/xpan78/data_mchan/embryo2/tree_linrace_embryo2.newick")
+#tree_linrace <- read.tree("/nethome/xpan78/data_mchan/embryo2/tree_linrace_embryo2.newick")
+```
+
+#Visualizing reconstructed tree with cell types
+```{r}
+fpath_tree <- system.file("extdata", "tree_linrace_embryo2.newick", package="LinRace")
+tree_linrace <- read.tree(fpath_tree)
+
+library(RColorBrewer)
+library(ggtree)
+n <- 43
+qual_col_pals = brewer.pal.info[brewer.pal.info$category == 'qual',]
+col_vector = unlist(mapply(brewer.pal, qual_col_pals$maxcolors, rownames(qual_col_pals)))
+color_pa <- sample(col_vector, n)
+old <- unique(labels_new)
+colors <- labels_new
+colors[colors %in% old] <- color_pa[match(colors, old, nomatch = 0)]
+
+color <- c(colors,rep("#000000",tree_linrace$Nnode))
+labels_hidden <- c(labels_new,rep("hidden",tree_linrace$Nnode))
+p <- ggtree(tree_linrace, branch.length='none',layout = "circular") +
+  geom_point( size=1) + theme(legend.position="none")
+genotype <- data.frame(type = labels_new)
+rownames(genotype) <- tree_linrace$tip.label
+p <- gheatmap(p, genotype, offset=.8, width=.2,
+              colnames=FALSE, legend_title="type") + scale_fill_manual(breaks=unique(labels_new),
+                                                                       values=color_pa, name="type")
+p <- p + theme(legend.title = element_text(size = 20),legend.text = element_text(size = 15))
+```
 
 Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Ctrl+Alt+I*.
 

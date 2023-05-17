@@ -16,6 +16,8 @@ knitr::opts_chunk$set(
 
 ```{r setup}
 library(devtools)
+library(DCLEAR)
+library(phangorn)
 devtools::load_all("~/TedSim/TedSim_1.00/TedSim/")
 devtools::load_all()
 ```
@@ -40,9 +42,9 @@ max_walk <- 8
 p_a <- 0.8
 n_cif <- 30
 n_diff <- 20
-cif_step <- 0.2
+cif_step <- 0.5
 #cif_step <- 0.2
-mu <- 0.1
+mu <- 0.05
 #mu <- 0.01
 
 p_d <- 0
@@ -67,6 +69,9 @@ muts <- cifs[[7]]
 rownames(muts) <- paste("cell",states[,4],sep = "_")
 muts_leaves <- muts[1:ncells,]
 
+#randomize muts_leaves
+muts_leaves <- muts[sample(nrow(muts_leaves)),]
+
 tree_ct <- cifs[[4]]
 tip_label <- c()
 for (node in tree_ct$tip.label){
@@ -78,12 +83,12 @@ tree_ct$tip.label <- tip_label
 #simulate true counts
 true_counts_res <- CIF2Truecounts(ngenes = 500,ncif = n_cif,ge_prob = 0.3,ncells = ncells, cif_res = cif_res)
 
-gene_expression_dir <- ""
-cell_meta_dir <- ""
-tree_gt_dir <- ""
-write.csv(true_counts_res[[1]],gene_expression_dir,row.names = FALSE)
-write.csv(states_leaves,cell_meta_dir)
-write.tree(tree_ct,tree_gt_dir)
+#gene_expression_dir <- ""
+#cell_meta_dir <- ""
+#tree_gt_dir <- ""
+#write.csv(true_counts_res[[1]],gene_expression_dir,row.names = FALSE)
+#write.csv(states_leaves,cell_meta_dir)
+#write.tree(tree_ct,tree_gt_dir)
 ```
 
 ```{r}
@@ -133,6 +138,7 @@ TreeNJ_h <- multi2di(Treenj)
 TreeNJ_h$edge.length <- rep(1, length(TreeNJ_h$edge.length))
 print( RF.dist(TreeNJ_h, tree_ct, normalize = TRUE) )
 ```
+
 ```{r}
 library(destiny)
 #Pairwise gene expression distance
@@ -215,6 +221,10 @@ for (i in 1:6){
 cell_meta <- as.data.frame(states_leaves)
 cell_meta$cluster_kmeans <- states_intermediate
 muts_leaves <- MutsTransform(muts_leaves)
+
+
+write.tree(tree,file = "~/tree_asym_16")
+write.tree(TreeNJ_h,file = "~/tree_NJ_16")
 
 #lambda <- 1
 ```
@@ -1009,3 +1019,236 @@ for (i in 1:maxIter){
 
   best_tree <- A_0[which.max(Likelihood_df$cl)]
 ```
+
+```{r}
+ncells <- 16
+#state tree 1
+#phyla <- read.tree(text='((t1:4, (t2:2, t3:2):2):2);')
+#state tree 2
+phyla <- read.tree(text='((t1:4, t2:4, t3:4, t4:4, t5:4, t6:4):2);')
+#phyla <- read.tree(text='((t1:2, t2:2):1, (t3:2, t4:2):1):2;')
+N_nodes <- 2*ncells-2
+ngenes <- 500
+max_walk <- 8
+p_a <- 0.8
+n_cif <- 30
+n_diff <- 20
+cif_step <- 0.5
+#cif_step <- 0.2
+ncells_list <- c(1024,2048)
+mu_list <- c(0.025,0.05,0.075)
+#mu <- 0.01
+seeds <- runif(10000,1,99999)
+
+p_d <- 1
+N_char <- 16
+#N_char <- 16
+#set.seed(1)
+
+ptm <- proc.time()
+LikelihoodCal_time <- 0
+TreeLC_time <- 0
+
+df <- data.frame(mu = numeric(),run = numeric(),NJ = numeric(),NJ_asym = numeric())
+for(ncells in ncells_list){
+  for(mu in mu_list){
+    for(i in 1:5){
+      N_nodes <- 2*ncells-2
+      print(seeds[i])
+      set.seed(seeds[i])
+      seeds <- seeds[-i]
+      allele <- c()
+      profiles_out <- c()
+      m_l <- c('D','I')
+      for (k in 1:40){
+        mutator <- m_l[sample(c(1,2),1)]
+        num1 <- sample(1:100,1)
+        num2 <- sample((2*num1):300,1)
+        allele_temp <- sprintf("%g%s+%g", 
+                             num1, mutator,num2)
+        allele <- c(allele,allele_temp)
+      }
+          
+      returnlist <- SIFGenerate(phyla,n_diff,step = cif_step)
+      cifs <- SimulateCIFs(ncells,phyla,p_a = p_a,n_CIF = n_cif,n_diff = n_diff,step = cif_step,p_d = p_d, Sigma = 0.5,mu = mu, N_char = N_char, max_walk = max_walk, SIF_res = returnlist, unif_on = FALSE)
+      
+      #We only need the leaf cells for experiments
+      cif_leaves <- lapply(c(1:3),function(parami){
+        cif_leaves_all <- cifs[[1]][[parami]][c(1:ncells),]
+        return(cif_leaves_all)
+      })
+      cif_res <- list(cif_leaves,cifs[[2]])
+      states <- cifs[[2]]
+      states <- states[1:N_nodes,]
+      states_leaves <- states[1:ncells,]
+      muts <- cifs[[7]]
+      rownames(muts) <- paste("cell",states[,4],sep = "_")
+      muts_leaves <- muts[1:ncells,]
+      
+      #randomize muts_leaves
+      muts_leaves <- muts_leaves[sample(nrow(muts_leaves)),]
+      
+      tree_ct <- cifs[[4]]
+      tip_label <- c()
+      for (node in tree_ct$tip.label){
+        tip <- paste('cell_',substr(node,2,nchar(node)),sep = '')
+        tip_label <- c(tip_label,tip)
+      }
+      tree_ct$tip.label <- tip_label
+      
+      #simulate true counts
+      true_counts_res <- CIF2Truecounts(ngenes = 500,ncif = n_cif,ge_prob = 0.3,ncells = ncells, cif_res = cif_res)
+      
+      state_counter <- 1
+      states_intermediate <- states_leaves[,'cluster']
+      for (cluster_id in sort(unique(states_leaves[,'cluster']))){
+        depth_range <- sort(unique(states_leaves[states_leaves[,'cluster']==cluster_id,'depth']))
+        state_inter <- state_counter:(state_counter + length(depth_range)-1)
+        state_counter <- state_counter + length(depth_range)
+        print(cluster_id)
+        print(state_inter)
+        for (i in 1:length(depth_range)){
+          states_intermediate[states_leaves[,'cluster']==cluster_id & states_leaves[,'depth'] == depth_range[i]]<- state_inter[i]
+        }
+      }
+      
+      state_lineages <- list()
+      for (j in 1:6){
+          lineage <- c(sort(unique(states_intermediate[states_leaves[,'cluster']==8])),sort(unique(states_intermediate[states_leaves[,'cluster']==j])))
+          state_lineages[[length(state_lineages)+1]] <- lineage
+      }
+       #construct the state lineages for the new tree:::
+      cell_meta <- as.data.frame(states_leaves)
+      cell_meta$cluster_kmeans <- states_intermediate
+      muts_leaves <- MutsTransform(muts_leaves)
+
+      
+      mu_d1 = c( 30, 20, 10, 5, 5, 1, 0.01, 0.001)
+      mu_d1 = mu_d1/sum(mu_d1)
+      simn = 100 # number of cell samples
+      m = 200  ## number of targets
+      mu_d = 0.03 # mutation rate
+      d = 12 # number of cell division
+      p_d = 0.005 # dropout probability
+      
+      sim_tree <- list()
+      for (j in 1:dim(muts_leaves)[1]){
+        sim_tree[[j]] <- c(muts_leaves[j,])
+        #names(sim_tree[[i]]) <- rownames(muts_leaves)[i]
+      }
+      
+      names(sim_tree) <- rownames(muts_leaves)
+      #nmstrings <- c('0','-',c(1:100))
+      nmstrings <- unique(unlist(sim_tree))
+      sim_data <- phyDat(sim_tree,type = 'USER',levels = nmstrings)
+      
+      #dist_wh2 <- WH(sim_data, InfoW, dropout=TRUE)
+      dist_h <- dist.hamming(sim_data)
+      
+      Treenj = nj(dist_h)
+      TreeNJ_h <- multi2di(Treenj)
+      #TreeFM_wh2 = fastme.ols(dist_wh2)
+      TreeNJ_h$edge.length <- rep(1, length(TreeNJ_h$edge.length))
+      
+      state_lineages <- list()
+      for (j in 1:6){
+          lineage <- c(sort(unique(states_intermediate[states_leaves[,'cluster']==8])),sort(unique(states_intermediate[states_leaves[,'cluster']==j])))
+          state_lineages[[length(state_lineages)+1]] <- lineage
+      }
+       #construct the state lineages for the new tree:::
+      cell_meta <- as.data.frame(states_leaves)
+      cell_meta$cluster_kmeans <- states_intermediate
+      muts_leaves <- MutsTransform(muts_leaves)
+      
+      tree <- NJ_asym(dist_h,muts_leaves,cell_meta$cluster_kmeans,state_lineages)
+      
+      temp <- data.frame(mu = mu,run = i,NJ = RF.dist(TreeNJ_h, tree_ct, normalize = TRUE),NJ_asym = RF.dist(tree, tree_ct, normalize = TRUE))
+      df <- rbind(df,temp)
+      
+      
+      
+      # write data for LinTiMat
+      counts <- true_counts_res[[1]]
+      exdata <- preprocessSC(counts)
+      sf <- apply(exdata, 2, mean)
+      npX <- t(t(exdata) / sf )
+      lnpX <- log(npX+1)
+      lnpX_imp <- DrImpute(lnpX,seed = seeds[i])
+  
+      #counts_t <- t(lnpX_imp)
+      counts_t <- t(counts)
+      colnames(counts_t) <- paste("gene", seq(1, ncol(counts_t)), sep = "_")
+      profiles <- data.frame(cell_id=character(), ClusterIdent = numeric(), HMID = character(),
+                             stringsAsFactors = F)
+      for (k in 1:ncells){
+        barcode <- muts[k,]
+        barcode <- replace(barcode, barcode=='-', '100D+100')
+        barcode <- replace(barcode, barcode==0, 'None')
+        for (j in 1:40){
+          barcode <- replace(barcode, barcode==j, allele[j])
+        }
+        barcode <- paste(barcode,collapse = "-")
+        cell_id <- paste("cell",states[k,4],sep = "_")
+        #cell_id <- paste("f6_DEW",states_leaves[i,4],"bcAAVQ",sep = "_")
+        temp_df <- data.frame(cell_id=cell_id,ClusterIdent = states[i,2], HMID = barcode,
+                              stringsAsFactors = F)
+        profiles <- rbind(profiles,temp_df)
+      }
+  
+      profiles_out <- cbind(profiles,counts_t)
+      #profiles_out <- cbind(profiles[1:376,],counts_Lin)
+  
+      var_gene <- c()
+      for (gene in colnames(counts_t)){
+        var_gene <- c(var_gene,var(counts_t[,gene]))
+      }
+      rank_gene <- data.frame(name = colnames(counts_t), var = var_gene)
+      rank_gene <- rank_gene[order(-rank_gene$var),]
+      colnames(rank_gene)<- c()
+      
+      character_matrix_dir <- sprintf("~/LinRace-temp/datasets/LinRace_compare/cm_tedsim_mu%g_p_d%g_%g_%g.txt", 
+                               mu, p_d, ncells,i)
+          
+      counts_dir <- sprintf("~/LinRace-temp/datasets/LinRace_compare/counts_barcoded_tedsim_mu%g_p_d%g_%g_%g.txt", 
+                           mu, p_d,ncells, i)
+      meta_dir <- sprintf("~/LinRace-temp/datasets/LinRace_compare/Top_genes_tedsim_mu%g_p_d%g_%g_%g.txt", 
+                         mu, p_d,ncells,  i)
+      write.table(muts_leaves,character_matrix_dir,sep = "\t", quote = FALSE)
+      write.table(profiles_out,file = counts_dir,row.names = FALSE,sep = "\t", quote = FALSE)
+      write.table(subset(rank_gene,select = 1),file = meta_dir,row.names = FALSE,sep = "\t", quote = FALSE)
+    }
+  }
+}
+
+df_plot1 <- data.frame(mu = df$mu,run = df$run,method = "NJ",rf = df$NJ)
+df_plot2 <- data.frame(mu = df$mu,run = df$run,method = "NJ_asym",rf = df$NJ_asym)
+df_plot <- rbind(df_plot1,df_plot2)
+
+df_plot$mu_group <- as.factor(df_plot$mu)
+#df_plot$ncells <- c(rep(64,15),rep(256,15),rep(1024,15))
+df_plot$ncells <- df_plot$run
+df_plot$ncells_group <- as.factor(df_plot$ncells)
+
+for (ncells in ncells_list){
+  p <- ggplot(df_plot[df_plot$ncells == ncells,], aes(x=mu_group, y=rf, fill=method)) + 
+    geom_boxplot()
+  p <- p + theme(axis.text = element_text(size = 20), axis.title = element_text(size = 30),legend.title = element_text(size = 15),legend.text = element_text(size = 20))
+  plt_dir <- sprintf("~/LinRace-temp/plots/box_compare_ncells%g.png",ncells)
+  ggsave(plt_dir,plot = p)
+
+}
+
+for (mu in mu_list){
+  p <- ggplot(df_plot[df_plot$mu == mu,], aes(x=ncells_group, y=rf, fill=method)) + 
+    geom_boxplot()
+  p <- p + theme(axis.text = element_text(size = 20), axis.title = element_text(size = 30),legend.title = element_text(size = 15),legend.text = element_text(size = 20))
+  plt_dir <- sprintf("~/LinRace-temp/plots/box_compare_mu%g.png",mu)
+  ggsave(plt_dir,plot = p)
+
+}
+
+p + theme(axis.text = element_text(size = 20), axis.title = element_text(size = 30),legend.title = element_text(size = 15),legend.text = element_text(size = 20))
+
+
+```
+
