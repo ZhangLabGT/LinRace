@@ -8,6 +8,7 @@ The R package for LinRace can be installed as:
 `devtools::install_github("https://github.com/ZhangLabGT/LinRace")`
 
 ## Usage
-An example usage of LinRace can be refered in vignettes.
+Example usages of LinRace can be refered in vignettes.
 1. [Running LinRace on simulated datasets](vignettes/LinRace_test.Rmd)
 2. [Comparing LinRace with other lineage reconstruction methods](vignettes/LinRace_compare.Rmd)
+3. [Running LinRace on a mouse embryo dataset(embryo2 from M.Chan et al.)](vignettes/Mouse_test.Rmd)
