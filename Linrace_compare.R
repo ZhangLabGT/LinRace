@@ -26,21 +26,26 @@ Preprocessing <- function(muts_leaves, phyla, states_leaves) {
 
 main <- function() {
   #.libPaths("/nethome/xpan78/LinRace/Rlib")
+  .libPaths("/nethome/pputta7/LinRace/Rlib")
   library("devtools")
   load_all()
   #load_all("/project/xpan78/LinRace-temp/")
 
 
   args <- commandArgs(trailingOnly = TRUE)
-  ncells <- 256
-  mu <- 0.1
-  pd <- 0
-  print(ncells)
+  ncells <- args[1]
+  mu <- args[2]
+  pd <- args[3]
+  run <- args[4]
 
-  cm_dir <- sprintf('sim/mut_%d_mu_0.1_pd_0_run_1.csv', ncells)
-  meta_dir <- sprintf('sim/meta_%d_mu_0.1_pd_0_run_1.csv', ncells)
-  count_dir <- sprintf('sim/expr_%d_mu_0.1_pd_0_run_1.csv', ncells)
-  out_dir <- sprintf('results/linrace_%d_bin_tree.newick', ncells)
+  print(args)
+
+
+  cm_dir <- sprintf('sim/mut_%s_mu_%s_pd_%s_run_%s.csv', ncells, mu, pd, run)
+  meta_dir <- sprintf('sim/meta_%s_mu_%s_pd_%s_run_%s.csv', ncells, mu, pd, run)
+  count_dir <- sprintf('sim/expr_%s_mu_%s_pd_%s_run_%s.csv', ncells, mu, pd, run)
+  out_dir <- sprintf('results/linrace_%s_mu_%s_pd_%s.run', ncells, mu, pd)
+  ncells <- strtoi(ncells)
 
   cm <- read.csv(file = cm_dir, row.names = 1, stringsAsFactors = FALSE)
   cell_meta <- read.csv(file = meta_dir, row.names = 1, stringsAsFactors = FALSE)
@@ -71,10 +76,13 @@ main <- function() {
   times <- c()
   avg_score <- 0
   avg_time <- 0
-  for (i in 1:1) {
+
+  num_trials <- 5
+
+  for (i in 1:num_trials) {
     start_time <- as.numeric(Sys.time())
 
-    tree <- NJ_asym_Dif(muts_leaves, cell_meta$cluster_kmeans, counts, state_lineages, max_Iter = 300, newick = TRUE)
+    tree <- NJ_asym_Dif(muts_leaves, cell_meta$cluster_kmeans, counts, state_lineages, max_Iter = 500, newick = TRUE)
     tree_gt <- stree(ncells, type = "balanced")
     tip_label <- c()
     for (node in tree_gt$tip.label) {
@@ -85,15 +93,12 @@ main <- function() {
     avg_score <- avg_score + RF.dist(tree, tree_gt, normalize = TRUE)
     end_time <- as.numeric(Sys.time())
     avg_time <- avg_time + (end_time - start_time)
-    print(i)
   }
 
-  scores <- c(scores, avg_score)
-  times <- c(times, avg_time)
+  avg_score <- avg_score / num_trials
+  avg_time <- avg_time / num_trials
 
-  print(scores)
-  print(times)
-  print(sprintf('Total Time: %gs', (end_time - start_time)))
+  write(sprintf("%f\t%f", avg_score, avg_time), file=out_dir, append=TRUE)
 }
 
 main()

@@ -66,21 +66,29 @@ distH <- function(muts_leaves) {
 }
 
 main <- function() {
-  #.libPaths("/nethome/xpan78/LinRace/Rlib")
+  #.libPaths("/nethome/pputta7/LinRace/Rlib")
   library("devtools")
   load_all()
-  #load_all("/project/xpan78/LinRace-temp/")
+  #load_all("/project/pputta7/LinRace-temp/")
   library("DCLEAR")
 
 
   args <- commandArgs(trailingOnly = TRUE)
 
-  ncells <- 256
+  args <- commandArgs(trailingOnly = TRUE)
+  ncells <- args[1]
+  mu <- args[2]
+  pd <- args[3]
+  run <- args[4]
 
-  cm_dir <- sprintf('sim/mut_%d_mu_0.1_pd_0_run_1.csv', ncells)
-  meta_dir <- sprintf('sim/meta_%d_mu_0.1_pd_0_run_1.csv', ncells)
-  count_dir <- sprintf('sim/expr_%d_mu_0.1_pd_0_run_1.csv', ncells)
-  out_dir <- sprintf('results/dclear_%d_bin_tree.newick', ncells)
+  print(args)
+
+
+  cm_dir <- sprintf('sim/mut_%s_mu_%s_pd_%s_run_%s.csv', ncells, mu, pd, run)
+  meta_dir <- sprintf('sim/meta_%s_mu_%s_pd_%s_run_%s.csv', ncells, mu, pd, run)
+  count_dir <- sprintf('sim/expr_%s_mu_%s_pd_%s_run_%s.csv', ncells, mu, pd, run)
+  out_dir <- sprintf('results/dclear_%s_mu_%s_pd_%s.run', ncells, mu, pd)
+  ncells <- strtoi(ncells)
 
   cm <- read.csv(file = cm_dir, row.names = 1, stringsAsFactors = FALSE)
   cell_meta <- read.csv(file = meta_dir, row.names = 1, stringsAsFactors = FALSE)
@@ -97,6 +105,7 @@ main <- function() {
   #order <- sample(nrow(muts_leaves))
   #cell_meta <- cell_meta[order,]
   #muts_leaves <- muts_leaves[order,]
+  start_time <- as.numeric(Sys.time())
 
   dist_kmer <- distH(muts_leaves)
   #print(as.matrix(dist_h)[1:5,])
@@ -104,8 +113,20 @@ main <- function() {
   #tree <- NJ_asym_alter(muts_leaves,cell_meta$cluster_kmeans,state_lineages,max_Iter = 200)
   tree <- nj(dist_kmer)
 
-  print("write to file...")
-  write.tree(tree, file = out_dir)
+
+  tree_gt <- stree(ncells, type = "balanced")
+  tip_label <- c()
+  for (node in tree_gt$tip.label) {
+    tip <- paste('cell_', substr(node, 2, nchar(node)), sep = '')
+    tip_label <- c(tip_label, tip)
+  }
+  tree_gt$tip.label <- tip_label
+  score <- RF.dist(tree, tree_gt, normalize = TRUE)
+  end_time <- as.numeric(Sys.time())
+  time <- end_time - start_time
+
+  write(sprintf("%f\t%f", score, time), file=out_dir, append=TRUE)
+
 }
 
 main()

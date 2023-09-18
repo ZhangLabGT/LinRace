@@ -23,71 +23,78 @@ Preprocessing <- function(muts_leaves, phyla, states_leaves) {
   return(list(muts_leaves, state_lineages, cell_meta))
 }
 
-Generate_profile_multi <- function(observed_counts, muts, states){
+Generate_profile_multi <- function(observed_counts, muts, states) {
   ncells <- nrow(states)
   allele <- c()
-  m_l <- c('D','I')
-  for (k in 1:40){
-    mutator <- m_l[sample(c(1,2),1)]
-    num1 <- sample(1:100,1)
-    num2 <- sample((2*num1):300,1)
+  m_l <- c('D', 'I')
+  for (k in 1:40) {
+    mutator <- m_l[sample(c(1, 2), 1)]
+    num1 <- sample(1:100, 1)
+    num2 <- sample((2 * num1):300, 1)
     allele_temp <- sprintf("%g%s+%g",
-                           num1, mutator,num2)
-    allele <- c(allele,allele_temp)
+                           num1, mutator, num2)
+    allele <- c(allele, allele_temp)
   }
 
   #counts <- observed_counts[[1]]
   counts <- observed_counts
   exdata <- preprocessSC(counts)
   sf <- apply(exdata, 2, mean)
-  npX <- t(t(exdata) / sf )
-  lnpX <- log(npX+1)
+  npX <- t(t(exdata) / sf)
+  lnpX <- log(npX + 1)
   lnpX_imp <- DrImpute(lnpX)
 
   counts_t <- t(lnpX_imp)
   colnames(counts_t) <- paste("gene", seq(1, ncol(counts_t)), sep = "_")
-  profiles <- data.frame(cell_id=character(), ClusterIdent = numeric(), HMID = character(),
+  profiles <- data.frame(cell_id = character(), ClusterIdent = numeric(), HMID = character(),
                          stringsAsFactors = F)
-  for (k in 1:ncells){
+  for (k in 1:ncells) {
     barcode <- muts[k,]
-    barcode <- replace(barcode, barcode=='-', '100D+100')
-    barcode <- replace(barcode, barcode==0, 'None')
-    for (j in 1:20){
-      barcode <- replace(barcode, barcode==j, allele[j])
+    barcode <- replace(barcode, barcode == '-', '100D+100')
+    barcode <- replace(barcode, barcode == 0, 'None')
+    for (j in 1:20) {
+      barcode <- replace(barcode, barcode == j, allele[j])
     }
-    barcode <- paste(barcode,collapse = "-")
-    cell_id <- paste("cell",states[k, 4],sep = "_")
+    barcode <- paste(barcode, collapse = "-")
+    cell_id <- paste("cell", states[k, 4], sep = "_")
     #cell_id <- paste("f6_DEW",states_leaves[i,4],"bcAAVQ",sep = "_")
-    temp_df <- data.frame(cell_id=cell_id,ClusterIdent = states[k,2], HMID = barcode,
+    temp_df <- data.frame(cell_id = cell_id, ClusterIdent = states[k, 2], HMID = barcode,
                           stringsAsFactors = F)
-    profiles <- rbind(profiles,temp_df)
+    profiles <- rbind(profiles, temp_df)
   }
 
-  profiles_out <- cbind(profiles,counts_t)
+  profiles_out <- cbind(profiles, counts_t)
 
   var_gene <- c()
-  for (gene in colnames(counts_t)){
-    var_gene <- c(var_gene,var(counts_t[,gene]))
+  for (gene in colnames(counts_t)) {
+    var_gene <- c(var_gene, var(counts_t[, gene]))
   }
   rank_gene <- data.frame(name = colnames(counts_t), var = var_gene)
   rank_gene <- rank_gene[order(-rank_gene$var),]
-  colnames(rank_gene)<- c()
-  returnList <- list(profiles_out,rank_gene)
+  colnames(rank_gene) <- c()
+  returnList <- list(profiles_out, rank_gene)
 
   return(returnList)
 }
 
 main <- function() {
+  .libPaths("/nethome/pputta7/LinRace/Rlib")
   library("devtools")
+  load_all("/project/pputta7/LinRace/")
   library(DrImpute)
-  load_all()
 
-  cm_dir <- 'sim/mut_2048_mu_0.1_pd_0_run_1.csv'
-  meta_dir <- 'sim/meta_2048_mu_0.1_pd_0_run_1.csv'
-  count_dir <- 'sim/expr_2048_mu_0.1_pd_0_run_1.csv'
+  args <- commandArgs(trailingOnly = TRUE)
+  ncells <- args[1]
+  run <- args[2]
+  mu <- args[3]
+  pd <- args[4]
 
-  combined_profile_dir <- 'sim/profile_2048_mu_0.1_pd_0_run_1.txt'
-  top_genes_dir <- 'sim/top_genes_2048_mu_0.1_pd_0_run_1.txt'
+  cm_dir <- sprintf('sim/mut_%s_mu_%s_pd_%s_run_%s.csv', ncells, mu, pd, run)
+  meta_dir <- sprintf('sim/meta_%s_mu_%s_pd_%s_run_%s.csv', ncells, mu, pd, run)
+  count_dir <- sprintf('sim/expr_%s_mu_%s_pd_%s_run_%s.csv', ncells, mu, pd, run)
+
+  combined_profile_dir <- sprintf('sim/profile_%s_mu_%s_pd_%s_run_%s.txt', ncells, mu, pd, run)
+  top_genes_dir <- sprintf('sim/top_genes_%s_mu_%s_pd_%s_run_%s.txt', ncells, mu, pd, run)
 
   cm <- read.csv(file = cm_dir, row.names = 1, stringsAsFactors = FALSE)
   cell_meta <- read.csv(file = meta_dir, row.names = 1, stringsAsFactors = FALSE)
@@ -102,14 +109,14 @@ main <- function() {
   cell_meta <- returnList[[3]]
   counts <- t(counts)
 
-  profile_res <- Generate_profile_multi(counts,muts_leaves,cell_meta)
+  profile_res <- Generate_profile_multi(counts, muts_leaves, cell_meta)
   profile_out <- profile_res[[1]]
   top_genes <- profile_res[[2]]
   order <- sample(nrow(profile_out))
   profile_out <- profile_out[order,]
 
-  write.table(profile_out,file = combined_profile_dir,row.names = FALSE,sep = "\t", quote = FALSE)
-  write.table(subset(top_genes,select = 1),top_genes_dir,row.names = FALSE,sep = "\t", quote = FALSE)
+  write.table(profile_out, file = combined_profile_dir, row.names = FALSE, sep = "\t", quote = FALSE)
+  write.table(subset(top_genes, select = 1), top_genes_dir, row.names = FALSE, sep = "\t", quote = FALSE)
 }
 
 main()

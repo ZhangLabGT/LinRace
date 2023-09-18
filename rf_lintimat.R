@@ -2,9 +2,17 @@ main <- function() {
 
   library("devtools")
   load_all()
-  ncells <- 256
 
-  tree_dir <- sprintf("results/lintimat_%d_bin_tree.newick", ncells)
+  args <- commandArgs(trailingOnly = TRUE)
+  ncells <- args[1]
+  run <- args[2]
+  time <- args[3]
+  mu <- 0.1
+  pd <- 1
+
+  tree_dir <- sprintf("results/lintimat_%s_%s_bin_tree.newick", ncells, run)
+
+  ncells <- strtoi(ncells)
 
   tree <- ape::read.tree(file = tree_dir)
   tree <- drop.tip(tree, "normal")
@@ -17,7 +25,11 @@ main <- function() {
   }
   tree_gt$tip.label <- tip_label
   score <- RF.dist(tree, tree_gt, normalize = TRUE)
-  print(score)
+
+  out_dir <- sprintf('results/lintimat_%s_mu_%s_pd_%s.run', ncells, mu, pd)
+
+  write(sprintf("%f\t%f", score, time), file = out_dir, append = TRUE)
+
 }
 
 main()
