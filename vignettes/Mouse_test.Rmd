@@ -16,6 +16,7 @@ library(devtools)
 load_all("/project/xpan78/LinRace-temp")
 #library(LinRace)
 
+library(TedSim)
 library(umap)
 library(ggplot2)
 library(phangorn)
@@ -29,37 +30,28 @@ library(Seurat)
 
 #loading 10X objects
 ```{r}
-fpath_2a <- system.file("extdata", "2a/", package="LinRace")
-fpath_2b <- system.file("extdata", "2b/", package="LinRace")
-
-embryo2a.data <- Read10X(data.dir = fpath_2a,gene.column = 1)
-embryo2b.data <- Read10X(data.dir = fpath_2b,gene.column = 1)
+embryo2a.data <- Read10X(data.dir = "/nethome/xpan78/data_mchan/embryo2/2a/",gene.column = 1)
+embryo2b.data <- Read10X(data.dir = "/nethome/xpan78/data_mchan/embryo2/2a/",gene.column = 1)
 ```
 
 # Merging datasets and import meta data
 ```{r}
 embryo2a <- CreateSeuratObject(counts = embryo2a.data, project = "embryo2a", min.cells = 3, min.features = 200)
 embryo2b <- CreateSeuratObject(counts = embryo2b.data, project = "embryo2b", min.cells = 3, min.features = 200)
-#rm(embryo2a.data)
-#rm(embryo2b.data)
+rm(embryo2a.data)
+rm(embryo2b.data)
 
 embryo2 <- merge(embryo2a, y = embryo2b, add.cell.ids = c("2a", "2b"), project = "embryo2")
-#rm(embryo2a)
-#rm(embryo2b)
+rm(embryo2a)
+rm(embryo2b)
 
-fpath_meta_m <- system.file("extdata", "GSE122187_CellStateKernels.xls", package="LinRace")
-fpath_meta_ct <- system.file("extdata", "cell_states_me.txt", package="LinRace")
-
-cluster_centers <- read_excel(fpath_meta_m)
-ct_mouse <- read.table(fpath_meta_ct,sep = "-")
-
+cluster_centers <- read_excel("/nethome/xpan78/GSE122187_CellStateKernels.xls")
 embryo2 <- subset(embryo2, features = cluster_centers$Gene)
 embryo2 <- NormalizeData(embryo2, normalization.method = "LogNormalize", scale.factor = 10000)
 counts_embryo2 <- GetAssayData(object = embryo2, slot = "counts")
 cluster_centers <- cluster_centers[cluster_centers$Gene %in% rownames(embryo2),2:ncol(cluster_centers)]
 cluster_ids <- c()
-
-
+ct_mouse <- read.table("/nethome/xpan78/cell_states_me.txt",sep = "-")
 for (i in c(1:ncol(embryo2))){
   expr_i <- counts_embryo2[,i]
   dist_cc <- as.matrix(dist(t(cbind(expr_i, cluster_centers))))
@@ -86,8 +78,7 @@ DimPlot(embryo2, reduction = "umap")
 
 #Importing lineage barcode data
 ```{r}
-fpath_cm <- system.file("extdata", "test_embryo2_character_matrix.txt", package="LinRace")
-cm_embryo2 <- read.csv(fpath_cm,sep = "\t")
+cm_embryo2 <- read.csv("/nethome/xpan78/data_mchan/embryo2/test_embryo2_character_matrix.txt",sep = "\t")
 muts_embryo2 <- cm_embryo2[,2:ncol(cm_embryo2)]
 rownames(muts_embryo2) <- gsub("-1","", cm_embryo2[,1])
 names <- colnames(embryo2)
@@ -119,16 +110,12 @@ umap_res <- Embeddings(embryo2_sub, reduction = "umap")
 df <- data.frame(dim1 = umap_res[,1], dim2 = umap_res[,2])
 p <- ggplot(df) + geom_point(aes(x = dim1,y = dim2,col = embryo2_sub$cluster.idents)) + labs(col = "Cluster ID") + xlab("UMAP 1") + ylab("UMAP 2")
 p <- p + theme(axis.text = element_text(size = 15), axis.title = element_text(size = 20),legend.title = element_text(size = 15),legend.text = element_text(size = 15))
-#plt_dir <- sprintf("/nethome/xpan78/data_mchan/umap_mouse.png")
-#ggsave(plt_dir,plot = p,width=20,height=10)
+plt_dir <- sprintf("/nethome/xpan78/data_mchan/umap_mouse.png")
+ggsave(plt_dir,plot = p,width=20,height=10)
 ```
 
 #Running Slingshot
 ```{r}
-rownames(umap_res) <- paste("cell",1:(nrow(muts_embryo2)),sep = "_")
-labels_new <-as.character(embryo2_sub$cluster.idents)
-
-
 sce <- slingshot(data = umap_res,clusterLabels = labels_new, dist.method = "simple",start.clus = " primitive/definitive endoderm")
 #sce <- slingshot(data = umap_res)
 state_lineages <- slingLineages(sce)
@@ -144,21 +131,18 @@ expr_mouse <- as.matrix(t(expr_mouse))
 rownames(expr_mouse) <- paste("cell",1:(nrow(muts_embryo2)),sep = "_")
 tree_linrace <- NJ_asym_Dif(as.data.frame(muts_embryo2),labels_new,expr_mouse,state_lineages,max_Iter = 500)
 
-#write.tree(tree_linrace,"/nethome/xpan78/data_mchan/embryo2/tree_linrace_embryo2.newick")
-#tree_linrace <- read.tree("/nethome/xpan78/data_mchan/embryo2/tree_linrace_embryo2.newick")
+write.tree(tree_linrace,"/nethome/xpan78/data_mchan/embryo2/tree_linrace_embryo2.newick")
+tree_linrace <- read.tree("/nethome/xpan78/data_mchan/embryo2/tree_linrace_embryo2.newick")
 ```
 
 #Visualizing reconstructed tree with cell types
 ```{r}
-fpath_tree <- system.file("extdata", "tree_linrace_embryo2.newick", package="LinRace")
-tree_linrace <- read.tree(fpath_tree)
-
 library(RColorBrewer)
-library(ggtree)
 n <- 43
 qual_col_pals = brewer.pal.info[brewer.pal.info$category == 'qual',]
 col_vector = unlist(mapply(brewer.pal, qual_col_pals$maxcolors, rownames(qual_col_pals)))
 color_pa <- sample(col_vector, n)
+
 old <- unique(labels_new)
 colors <- labels_new
 colors[colors %in% old] <- color_pa[match(colors, old, nomatch = 0)]
@@ -166,7 +150,7 @@ colors[colors %in% old] <- color_pa[match(colors, old, nomatch = 0)]
 color <- c(colors,rep("#000000",tree_linrace$Nnode))
 labels_hidden <- c(labels_new,rep("hidden",tree_linrace$Nnode))
 p <- ggtree(tree_linrace, branch.length='none',layout = "circular") +
-  geom_point( size=1) + theme(legend.position="none")
+  geom_point(size=1) + theme(legend.position="none")
 genotype <- data.frame(type = labels_new)
 rownames(genotype) <- tree_linrace$tip.label
 p <- gheatmap(p, genotype, offset=.8, width=.2,
@@ -174,6 +158,92 @@ p <- gheatmap(p, genotype, offset=.8, width=.2,
                                                                        values=color_pa, name="type")
 p <- p + theme(legend.title = element_text(size = 20),legend.text = element_text(size = 15))
 ```
+
+```{r}
+#Visualize the unique barcodes and number of cells
+cm_embryo2 <- read.csv("/nethome/xpan78/data_mchan/embryo2/test_embryo2_character_matrix.txt",sep = "\t")
+muts_embryo2 <- cm_embryo2[,2:ncol(cm_embryo2)]
+rownames(muts_embryo2) <- gsub("-1","", cm_embryo2[,1])
+names <- colnames(embryo2)
+names <- gsub("2a_","", names)
+names <- gsub("2b_","", names)
+
+returnlist <- DivideMut(muts_embryo2)
+hist_mouse <- returnlist[[2]]
+
+df_vis <- c()
+for (i in 1:nrow(hist_mouse)){
+  temp <- data.frame(barcode = hist_mouse$barcode[i],ncell = length(hist_mouse$cellids[[i]])) 
+  df_vis <- rbind(df_vis,temp)
+}
+
+df_vis <- df_vis %>% arrange(desc(ncell))
+df_vis$ncell <- factor(df_vis$ncell, levels = df_vis$ncell[order(df_vis$ncell, decreasing = TRUE)])
+
+p <- ggplot(data = df_vis[1:50,])
+p <- p + geom_bar(aes(x = reorder(barcode, -ncell), y = ncell),stat="identity", fill="steelblue") + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) + theme(axis.text = element_text(size = 15), axis.title = element_text(size = 20),legend.title = element_text(size = 15),legend.text = element_text(size = 15))
+p <- p + xlab("Barcode") + ylab("Number of Cells") 
+plt_dir <- sprintf("/project/xpan78/plots/Rank_barcode_mouse.png")
+ggsave(plt_dir,plot = p,width=10,height=6)
+
+df_vis_whole <- df_vis
+df_vis_whole$ncell <- df_vis_whole$ncell + 0.01
+p <- ggplot(data = df_vis_whole)
+p <- p + geom_bar(aes(x = reorder(barcode, -ncell), y = ncell),stat="identity", fill="steelblue") + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) + theme(axis.text.y = element_text(size = 15), axis.title = element_text(size = 20),legend.title = element_text(size = 15),legend.text = element_text(size = 15),axis.ticks.x = element_blank(),axis.text.x = element_blank())
+p <- p +geom_vline(xintercept = c(530,860)) + 
+geom_text(aes(x=530, label="\n", y=1000), colour="red", angle=90,size = 5) +
+geom_text(aes(x=860, label="\n", y=1000), colour="red", angle=90,size = 5)
+p <- p + scale_y_log10(
+   breaks = scales::trans_breaks("log10", function(x) 10^x),
+   labels = scales::trans_format("log10", scales::math_format(10^.x))
+ )
+p <- p + xlab("Barcode") + ylab("Number of Cells") 
+plt_dir <- sprintf("/project/xpan78/plots/Rank_barcode_mouse.png")
+ggsave(plt_dir,plot = p,width=10,height=6)
+
+dt_vis <- as.data.frame(table(df_vis$ncell),stringsAsFactors = FALSE)
+dt_vis$Var1 <- as.numeric(dt_vis$Var1)
+p <- ggplot(data = dt_vis)
+p <- p + geom_point(aes(x = Var1,y = Freq)) + theme(axis.text = element_text(size = 15), axis.title = element_text(size = 20),legend.title = element_text(size = 15),legend.text = element_text(size = 15))
+p <- p + scale_x_log10(
+   breaks = scales::trans_breaks("log10", function(x) 10^x),
+   labels = scales::trans_format("log10", scales::math_format(10^.x))
+ )
+p <- p + xlab("Number of Clones") + ylab("Clone Size(number of cells)")
+```
+
+
+```{r}
+#Visualize the unique barcodes and number of cells for simulated datasets
+devtools::load_all("./LinRace-temp")
+
+cm_sim <- read.csv("/project/xpan78/sim_rand/tree0/mut_0.8_pa_1024_mu_0.2_pd_0_Nchar_16_run_10.csv",sep = ",")
+muts_sim <- cm_sim[,2:ncol(cm_sim)]
+
+
+returnlist <- DivideMut(muts_sim)
+hist_sim <- returnlist[[2]]
+
+df_vis <- c()
+for (i in 1:nrow(hist_sim)){
+  temp <- data.frame(barcode = hist_sim$barcode[i],ncell = length(hist_sim$cellids[[i]])) 
+  df_vis <- rbind(df_vis,temp)
+}
+
+df_vis <- df_vis %>% arrange(desc(ncell))
+df_vis$ncell <- factor(df_vis$ncell, levels = df_vis$ncell[order(df_vis$ncell, decreasing = TRUE)])
+
+p <- ggplot(data = df_vis[1:50,])
+p <- p + geom_bar(aes(x = reorder(barcode, -ncell), y = ncell),stat="identity", fill="steelblue") + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) + theme(axis.text = element_text(size = 15), axis.title = element_text(size = 20),legend.title = element_text(size = 15),legend.text = element_text(size = 15))
+p <- p + xlab("Barcode") + ylab("Number of Cells") 
+plt_dir <- sprintf("/project/xpan78/plots/Rank_barcode_sim_pd0.png")
+ggsave(plt_dir,plot = p,width=10,height=6)
+
+
+```
+
+
+
 
 Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Ctrl+Alt+I*.
 

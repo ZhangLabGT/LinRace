@@ -35,6 +35,22 @@ DivideMut_Cas <- function(X){
   return(list(tree_backbone,dt))
 }
 
+#' Generate unique barcode data for cas hybrid runs
+#'
+#' @param mut_dir directory to lineage barcode matrix
+
+#' @export
+Generate_Mut_Unique <- function(mut_dir) {
+  X <- read.csv(file = mut_dir,row.names = 1,stringsAsFactors = FALSE)
+
+  X_unique <- X[!duplicated(X),]
+  l <- dim(X_unique)[1]
+  rownames(X_unique) <- 1:l
+
+  mut_unique_dir <- paste0(gsub(".csv","",mut_dir),"_unique.csv")
+  write.csv(X_unique, mut_unique_dir)
+}
+
 Cas_greedy <- function(X,prob_table){
   if (nrow(X) == 1){return(rownames(X))}
   #if (nrow(X) == 1){return(paste(X, collapse = '|'))}
@@ -128,6 +144,49 @@ NJ_asym_Cas_Dif <- function(muts,states,counts,state_lineages,max_Iter = 200){
   returnList <- DivideMut_Cas(muts)
 
   tree_backbone <- returnList[[1]]
+  dt <- returnList[[2]]
+
+  subtree_list <- list()
+
+  dm <- DiffusionMap(data=log2(counts+1),n_pcs = 30)
+  prob_t <- dm@transitions
+
+  for (i in 1:nrow(dt)){
+    cellids <- unlist(dt$cellids[i])
+    muts_sub <- muts[cellids,]
+    counts_sub <- counts[cellids,]
+    states_sub <- states[cellids]
+    labels_sub <- labels[cellids]
+    if (length(labels_sub)>1){
+      #res <- FindExpTree_Dif(states,labels = labels_sub,state_lineages,muts,prob_t,maxIter = max_Iter)
+      res <- FindExpTree_Dif_Newick(states, labels = labels_sub, state_lineages, muts, prob_t, maxIter = max_Iter, lambda1 = 1,lambda2 = 1)
+      subtree_opt <- res[[1]]
+      subtree_opt$name <- as.character(i)
+      subtree_list[[length(subtree_list)+1]] <- subtree_opt
+    }else {
+      tree_backbone$tip.label[tree_backbone$tip.label==as.character(i)] <- labels_sub
+    }
+  }
+
+  tree_final <- ConstructTree(tree_backbone,subtree_list)
+}
+
+
+
+#' LinRace main function with Cassiopeia backbone: asymmetric division based Cassiopeia-hybrid
+#'
+#' @param muts lineage barcode matrix
+#' @param states cell states of single cells
+#' @param counts gene expression data of single cells
+#' @param state_lineages the lineages that makes the state network from the root state to leaf states
+#' @param max_Iter the maximum iterations for local search
+#' @import data.table
+#' @import phangorn
+#' @export
+NJ_asym_Cas_hybrid <- function(muts,states,counts,state_lineages,max_Iter = 200,tree_backbone){
+  labels <- rownames(muts)
+  returnList <- DivideMut_Cas(muts)
+
   dt <- returnList[[2]]
 
   subtree_list <- list()
