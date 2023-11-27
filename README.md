@@ -6,6 +6,7 @@
 * [Contact](#contact)
 
 # LinRace
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.10211294.svg)](https://doi.org/10.5281/zenodo.10211294)
 LinRace is a method that integrates the lineage barcode and gene expression data using the asymmetric cell division model and infers cell lineage under a framework combining Neighbor Joining and maximum-likelihood heuristics.
 
 ![Figure1 (1)](https://user-images.githubusercontent.com/39555451/216690081-b1e437a3-ca60-4df4-9e43-ea6de0df3614.jpg)
