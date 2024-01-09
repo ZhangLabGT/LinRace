@@ -4,22 +4,7 @@ Title: cell division history reconstruction of single cells using paired lineage
 Version: 0.1.0
 Author: Xinhai Pan
 Maintainer: The package maintainer <xpan78@gatech.edu>
-Description: Understanding how single cells divide and differentiate into different cell types in devel-7
-oped organs is one of the major tasks of developmental and stem cell biology. Recently, lineage tracing8
-technology using CRISPR/Cas9 genome editing has enabled simultaneous readouts of gene expressions9
-and lineage barcodes in single cells, which allows for the reconstruction of the cell division tree, and10
-even the detection of cell types and differentiation trajectories at the whole organism level. While11
-most state-of-the-art methods for lineage reconstruction utilize only the lineage barcode data, methods12
-that incorporate gene expression data are emerging, aiming to improve the accuracy of lineage recon-13
-struction. However, effectively incorporating the gene expression data requires a reasonable model on14
-how gene expression data changes along generations of divisions. Here, we present LinRace (Lineage15
-Reconstruction with asymmetric cell division model), a method that integrates the lineage barcode16
-and gene expression data using the asymmetric cell division model and infers cell lineage under a17
-framework combining Neighbor Joining and maximum-likelihood heuristics. On both simulated and18
-real data, LinRace outputs more accurate cell division trees than existing methods. Moreover, Lin-19
-Race can output the cell states (cell types) of ancestral cells, which is rarely performed with existing20
-lineage reconstruction methods. The information on ancestral cells can be used to analyze how a pro-21
-genitor cell generates a large population of cells with various functionalities. 
+Description: LinRace (Lineage Reconstruction with asymmetric cell division model), integrates lineage barcode and gene expression data using asymmetric cell division model and infers cell lineages and ancestral cell states using Neighbor-Joining and maximum-likelihood heuristics. On both simulated and real data, LinRace outputs more accurate cell division trees than existing methods. With inferred ancestral states, LinRace can also show how a progenitor cell generates a large population of cells with various functionalities.
 License: MIT license
 Encoding: UTF-8
 LazyData: true
