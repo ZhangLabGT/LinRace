@@ -31,6 +31,7 @@ library("slingshot")
 ```
 
 ```{r}
+#the zebrafish count data is from the scGESTALT paper
 count_ZF <- read.csv("./inst/extdata/data_zebrafish/ZF1_F3_DrImpute.txt",sep = "\t")
 expr_ZF <- count_ZF[,4:ncol(count_ZF)]
 cluster_indent <- count_ZF[,2]
