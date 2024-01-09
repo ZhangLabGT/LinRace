@@ -15,22 +15,31 @@ knitr::opts_chunk$set(
 ```
 
 ```{r setup}
+#.libPaths("/nethome/xpan78/LinRace/Rlib")
 library(devtools)
-library(DCLEAR)
+#load_all("/project/xpan78/LinRace-temp")
+library(LinRace)
+
+library(TedSim)
+library(umap)
+library(ggplot2)
 library(phangorn)
-devtools::load_all("~/TedSim/TedSim_1.00/TedSim/")
-devtools::load_all()
+library(DCLEAR)
+library(TedSim)
+library(TreeDist)
+library(slingshot)
+library(readxl)
+library(Seurat)
 ```
 
 ```{r}
 # Simulate dataset using TedSim
 
 #testing LinRace on simulated datasets
-# ncells: 32, 128, 512
+# ncells: 32, 128, 512, 1024
 # mutation rate mu: 0.05, 0.1, 0.2,0.4
-# 5 datasets each settings
 
-ncells <- 128
+ncells <- 1024
 #state tree 1
 #phyla <- read.tree(text='((t1:4, (t2:2, t3:2):2):2);')
 #state tree 2
@@ -69,8 +78,6 @@ muts <- cifs[[7]]
 rownames(muts) <- paste("cell",states[,4],sep = "_")
 muts_leaves <- muts[1:ncells,]
 
-#randomize muts_leaves
-muts_leaves <- muts[sample(nrow(muts_leaves)),]
 
 tree_ct <- cifs[[4]]
 tip_label <- c()
@@ -93,20 +100,52 @@ true_counts_res <- CIF2Truecounts(ngenes = 500,ncif = n_cif,ge_prob = 0.3,ncells
 
 ```{r}
 #Get cell state information (intermediate)
-state_counter <- 1
-states_intermediate <- states_leaves[,'cluster']
-for (cluster_id in sort(unique(states_leaves[,'cluster']))){
-  depth_range <- sort(unique(states_leaves[states_leaves[,'cluster']==cluster_id,'depth']))
-  state_inter <- state_counter:(state_counter + length(depth_range)-1)
-  state_counter <- state_counter + length(depth_range)
-  print(cluster_id)
-  print(state_inter)
-  for (i in 1:length(depth_range)){
-    states_intermediate[states_leaves[,'cluster']==cluster_id & states_leaves[,'depth'] == depth_range[i]]<- state_inter[i]
+Preprocessing <- function(muts_leaves,phyla,states_leaves){
+  state_counter <- 1
+  states_intermediate <- states_leaves[,'cluster']
+  for (cluster_id in sort(unique(states_leaves[,'cluster']))){
+    depth_range <- sort(unique(states_leaves[states_leaves[,'cluster']==cluster_id,'depth']))
+    state_inter <- state_counter:(state_counter + length(depth_range)-1)
+    state_counter <- state_counter + length(depth_range)
+    for (i in 1:length(depth_range)){
+      states_intermediate[states_leaves[,'cluster']==cluster_id & states_leaves[,'depth'] == depth_range[i]]<- state_inter[i]
+    }
   }
+
+  state_lineages <- list()
+  for (j in 1:6){
+    lineage <- c(sort(unique(states_intermediate[states_leaves[,'cluster']==8])),sort(unique(states_intermediate[states_leaves[,'cluster']==j])))
+    state_lineages[[length(state_lineages)+1]] <- lineage
+  }
+
+  cell_meta <- as.data.frame(states_leaves)
+  cell_meta$cluster_kmeans <- states_intermediate
+  #muts_leaves <- MutsTransform(muts_leaves)
+
+  return(list(muts_leaves,state_lineages,cell_meta))
 }
 ```
 
+
+```{r}
+# Run LinRace
+returnList <- Preprocessing(muts_leaves,phyla,states_leaves)
+muts_leaves <- returnList[[1]]
+state_lineages <- returnList[[2]]
+cell_meta <- returnList[[3]]
+
+order <- sample(nrow(muts_leaves))
+cell_meta <- cell_meta[order,]
+muts_leaves <- muts_leaves[order,]
+counts <- t(true_counts_res[[1]])[order,]
+
+#dist_h <- distH(muts_leaves)
+#print(as.matrix(dist_h)[1:5,])
+#tree <- NJ_asym(dist_h,muts_leaves,cell_meta$cluster_kmeans,state_lineages)
+tree <- NJ_asym_Dif(as.data.frame(muts_leaves),cell_meta$cluster_kmeans,counts,state_lineages,max_Iter = 500, lambda1 = 10,lambda2 = 1)
+
+plot(tree)
+```
 
 ```{r}
 # Run neighbor joining on barcode data
