@@ -147,6 +147,8 @@ tree <- NJ_asym_Dif(as.data.frame(muts_leaves),cell_meta$cluster_kmeans,counts,s
 plot(tree)
 ```
 
+Two baseline neighbor joining on either barcode data or gene expression data
+
 ```{r}
 # Run neighbor joining on barcode data
 mu_d1 = c( 30, 20, 10, 5, 5, 1, 0.01, 0.001)
@@ -268,6 +270,7 @@ write.tree(TreeNJ_h,file = "~/tree_NJ_16")
 #lambda <- 1
 ```
 
+#extensive analysis on different local search programs with the likelihood function
 ```{r}
 #local search program 1: local search using rSS
 tree <- TreeNJ_h
